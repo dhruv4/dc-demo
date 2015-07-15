@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Data Canopy Demo</title>
+		<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+		<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+		<script src="js/materialize.min.js"></script>
+	    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+		<script src="js/index.js"></script>
+	    <meta name="viewport" content="width=device-width, initial-scale=1">
+	    <link rel="stylesheet" href="css/materialize.min.css">
+	    <link rel="stylesheet" href="css/index.css">
+	    <link rel="shortcut icon" href="">
+	</head>
+	<body>
+		<header>
+			<nav>
+				<div class="nav-wrapper grey">
+					<a href="/" class="brand-logo center white-text">Data Canopy</a>
+					<a href="//seas.harvard.edu" class="brand-logo left"><img src="media/seas.png"></a>
+					<a href="//daslab.seas.harvard.edu" class="brand-logo right"><img src="media/daslab.png"></a>
+				</div>
+			</nav>
+		</header>
+		<main>
+			<div id="splash-container" class="container" style="display: block;">
+				<div class="row">
+					<div class="card col s5">
+						<div class="card-content">
+							<span class="card-title black-text">
+								Performance Comparison
+							</span>
+							<button class="waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterTest()">Enter</button>
+						</div>
+					</div>
+					<div class="card col offset-s2 s5">
+						<div class="card-content">
+							<span class="card-title black-text">
+								Interaction Demo
+							</span>
+							<button class="waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterDemo()">Enter</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="test-container" style="display: none;">
+				<div class="row">
+					<div class="card col s10 offset-s1">
+						<div class="card-content">
+							<span class="card-title black-text">Change Parameters</span>
+							<form>
+								<div class="row">
+									<p class="range-field col s4">
+										<input type="range" id="row-slide" min="100" max="100000" step="100" />
+								   		<label>Rows</label>
+									</p>
+									<p class="range-field col s4">
+										<input type="range" id="col-slide" min="2" max="30" step="2"/>
+										<label>Cols</label>
+									</p>
+									<p class="range-field col s4">
+										<input type="range" id="chunk-slide" min="5" max="10000" step="5"/>
+										<label>Chunks</label>
+									</p>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+				<div class="row">
+					<div class="card col s4">
+						<div class="card-image">
+				              <img src="media/haystack.png">
+				              <span class="card-title black-text">MonetDB Graph</span>
+			            </div>
+						<div class="card-content">
+							<div class="row">
+								<div class="card col s5">
+									<div class="card-content">
+										<span class="card-title black-text">
+											Timer
+										</span>
+									</div>
+								</div>
+								<div class="card col offset-s1 s5">
+									<div class="card-content">
+										<span class="card-title black-text">
+											Cache Misses
+										</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="card col s4">
+						<div class="card-image">
+				              <img src="media/haystack.png">
+				              <span class="card-title black-text">C++ Graph</span>
+			            </div>
+						<div class="card-content">
+							<div class="row">
+								<div class="card col s5">
+									<div class="card-content">
+										<span class="card-title black-text">
+											Timer
+										</span>
+									</div>
+								</div>
+								<div class="card col offset-s1 s5">
+									<div class="card-content">
+										<span class="card-title black-text">
+											Cache Misses
+										</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="card col s4">
+						<div class="card-image">
+				              <img src="media/haystack.png">
+				              <span class="card-title black-text">Postgres Graph</span>
+			            </div>
+						<div class="card-content">
+							<div class="row">
+								<div class="card col s5">
+									<div class="card-content">
+										<span class="card-title black-text">
+											Timer
+										</span>
+									</div>
+								</div>
+								<div class="card col offset-s1 s5">
+									<div class="card-content">
+										<span class="card-title black-text">
+											Cache Misses
+										</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row">
+					<div class="card col s12">
+						<div class="card-image">
+							<img src="media/mpl_pg_cache_Rows.pdf">
+				            <span class="card-title black-text">Performance Graph</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="demo-container" style="display: none;">
+				<div class="row">
+					<div id="inter-wrap" class="col s9">
+						<img style="z-index: -1;" src="media/haystack.png">
+					</div>
+					<div id="side-wrap" class="col s3">
+						<div class="card col s12">
+							<div class="card-content">
+								<img height="200px" src="media/mpl_pg_cache_Rows.pdf">
+				            	<span class="card-title black-text">Performance Graph</span>
+							</div>
+						</div>
+						<div class="card col s12">
+							<div class="card-content">
+								<span class="card-title black-text">
+									Alter Parameters
+								</span>
+								<div class="input-field">
+									<input id="col-input" type="text">
+									<label for="col-input">Columns</label>
+								</div>
+								<button class="waves-effect waves-light btn red accent-4" type="button" id="change" onclick="">Change</button>
+							</div>
+						</div>
+						<div class="card col s12">
+							<div class="card-content">
+								<button class="waves-effect waves-light btn green" type="button" id="full" onclick="">Full</button>
+								<button class="waves-effect waves-light btn red accent-4" type="button" id="full" onclick="">Adaptive</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</main>
+		<footer style="font-size: 10px; text-align: center;">
+			<a href="//daslab.seas.harvard.edu">DASLab</a> @ Harvard
+		</footer>
+	</body>
+</html>
