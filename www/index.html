@@ -5,12 +5,14 @@
 		<script src="//code.jquery.com/jquery-1.10.2.js"></script>
 		<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
 		<script src="js/materialize.min.js"></script>
-	    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+		<script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+		<script src="js/ChartNew.js/ChartNew.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 		<script src="js/index.js"></script>
-	    <meta name="viewport" content="width=device-width, initial-scale=1">
-	    <link rel="stylesheet" href="css/materialize.min.css">
-	    <link rel="stylesheet" href="css/index.css">
-	    <link rel="shortcut icon" href="">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="css/materialize.min.css">
+		<link rel="stylesheet" href="css/index.css">
+		<link rel="shortcut icon" href="">
 	</head>
 	<body>
 		<header>
@@ -27,18 +29,22 @@
 				<div class="row">
 					<div class="card col s5">
 						<div class="card-content">
-							<span class="card-title black-text">
-								Performance Comparison
-							</span>
-							<button class="waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterTest()">Enter</button>
+							<div class="row">
+								<span class="col s12 card-title black-text">
+									Performance Comparison
+								</span>
+								<button class="col s6 offset-s3 waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterTest()">Enter</button>
+							</div>
 						</div>
 					</div>
 					<div class="card col offset-s2 s5">
 						<div class="card-content">
-							<span class="card-title black-text">
-								Interaction Demo
-							</span>
-							<button class="waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterDemo()">Enter</button>
+							<div class="row">
+								<span class="col s12 card-title black-text">
+									Interaction Demo
+								</span>
+								<button class="col s6 offset-s3 waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterDemo()">Enter</button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -52,7 +58,7 @@
 								<div class="row">
 									<p class="range-field col s4">
 										<input type="range" id="row-slide" min="100" max="100000" step="100" />
-								   		<label>Rows</label>
+										<label>Rows</label>
 									</p>
 									<p class="range-field col s4">
 										<input type="range" id="col-slide" min="2" max="30" step="2"/>
@@ -64,29 +70,34 @@
 									</p>
 								</div>
 							</form>
+							<div class="row">
+								<button id="start-btn" onclick="startClick()" class="col s4 offset-s4 waves-effect waves-light btn red accent-4">Start</button>
+							</div>
 						</div>
 					</div>
 				</div>
 				<div class="row">
 					<div class="card col s4">
 						<div class="card-image">
-				              <img src="media/haystack.png">
-				              <span class="card-title black-text">MonetDB Graph</span>
-			            </div>
+							<img class="haystack" src="media/haystack.png">
+							<span class="card-title black-text">MonetDB Graph</span>
+						</div>
 						<div class="card-content">
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
-										<span class="card-title black-text">
-											Timer
+										<span id="mdb-time" class="card-title black-text timer">
+											<time>00:00:00</time>
 										</span>
+										<p>Time</p>
 									</div>
 								</div>
 								<div class="card col offset-s1 s5">
 									<div class="card-content">
-										<span class="card-title black-text">
-											Cache Misses
+										<span id="mdb-cache" class="card-title black-text">
+											0
 										</span>
+										<p>Cache Misses</p>
 									</div>
 								</div>
 							</div>
@@ -94,23 +105,25 @@
 					</div>
 					<div class="card col s4">
 						<div class="card-image">
-				              <img src="media/haystack.png">
-				              <span class="card-title black-text">C++ Graph</span>
-			            </div>
+							<img class="haystack" src="media/haystack.png">
+							<span class="card-title black-text">C++ Graph</span>
+						</div>
 						<div class="card-content">
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
-										<span class="card-title black-text">
-											Timer
+										<span id="c++-time" class="card-title black-text timer">
+											<time>00:00:00</time>
 										</span>
+										<p>Time</p>
 									</div>
 								</div>
 								<div class="card col offset-s1 s5">
 									<div class="card-content">
-										<span class="card-title black-text">
-											Cache Misses
+										<span id="c++-cache" class="card-title black-text">
+											0
 										</span>
+										<p>Cache Misses</p>
 									</div>
 								</div>
 							</div>
@@ -118,23 +131,25 @@
 					</div>
 					<div class="card col s4">
 						<div class="card-image">
-				              <img src="media/haystack.png">
-				              <span class="card-title black-text">Postgres Graph</span>
-			            </div>
+							<img class="haystack" src="media/haystack.png">
+							<span class="card-title black-text">Postgres Graph</span>
+						</div>
 						<div class="card-content">
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
-										<span class="card-title black-text">
-											Timer
+										<span id="pg-time" class="card-title black-text timer">
+											<time>00:00:00</time>
 										</span>
+										<p>Time</p>
 									</div>
 								</div>
 								<div class="card col offset-s1 s5">
 									<div class="card-content">
-										<span class="card-title black-text">
-											Cache Misses
+										<span id="pg-cache" class="card-title black-text">
+											0
 										</span>
+										<p>Cache Misses</p>
 									</div>
 								</div>
 							</div>
@@ -144,8 +159,8 @@
 				<div class="row">
 					<div class="card col s12">
 						<div class="card-image">
-							<img src="media/mpl_pg_cache_Rows.pdf">
-				            <span class="card-title black-text">Performance Graph</span>
+							<canvas id="perfgraph"></canvas>
+							<span class="card-title black-text">Performance Graph</span>
 						</div>
 					</div>
 				</div>
@@ -154,13 +169,60 @@
 			<div id="demo-container" style="display: none;">
 				<div class="row">
 					<div id="inter-wrap" class="col s9">
-						<img style="z-index: -1;" src="media/haystack.png">
+						<!--img style="z-index: -1;" src="media/haystack.png"-->
+						<ul class="collapsible popout" data-collapsible="accordion">
+							<li>
+								<div class="collapsible-header">First</div>
+								<div class="collapsible-body">
+									<ul class="collapsible" data-collapsible="accordion">
+										<li>
+											<div class="collapsible-header">Second</div>
+											<div class="collapsible-body"><p>Lorem ipsum dolor sit amet.</p></div>
+										</li>
+										<li>
+											<div class="collapsible-header">Third</div>
+											<div class="collapsible-body"><p>Lorem ipsum dolor sit amet.</p></div>
+										</li>
+									</ul>
+								</div>
+							</li>
+							<li>
+								<div class="collapsible-header">Second</div>
+								<div class="collapsible-body">
+									<ul class="collapsible" data-collapsible="accordion">
+										<li>
+											<div class="collapsible-header">Second</div>
+											<div class="collapsible-body"><p>Lorem ipsum dolor sit amet.</p></div>
+										</li>
+										<li>
+											<div class="collapsible-header">Third</div>
+											<div class="collapsible-body"><p>Lorem ipsum dolor sit amet.</p></div>
+										</li>
+									</ul>
+								</div>
+							</li>
+							<li>
+								<div class="collapsible-header">Third</div>
+								<div class="collapsible-body">
+									<ul class="collapsible" data-collapsible="accordion">
+										<li>
+											<div class="collapsible-header">Second</div>
+											<div class="collapsible-body"><p>Lorem ipsum dolor sit amet.</p></div>
+										</li>
+										<li>
+											<div class="collapsible-header">Third</div>
+											<div class="collapsible-body"><p>Lorem ipsum dolor sit amet.</p></div>
+										</li>
+									</ul>
+								</div>
+							</li>
+						</ul>
 					</div>
 					<div id="side-wrap" class="col s3">
 						<div class="card col s12">
-							<div class="card-content">
-								<img height="200px" src="media/mpl_pg_cache_Rows.pdf">
-				            	<span class="card-title black-text">Performance Graph</span>
+							<div class="card-image">
+								<canvas id="perfgraph"></canvas>
+								<!--span class="card-title black-text">Performance Graph</span-->
 							</div>
 						</div>
 						<div class="card col s12">
