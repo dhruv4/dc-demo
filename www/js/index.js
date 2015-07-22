@@ -103,6 +103,7 @@ socket.on('pgNews', function (msg){
 
 	pgData.push(totalSeconds);
 	pgXPos.push(100*(parseInt(msg['level'])/cols));
+	$('#pg-prog').css('width', String(100*(parseInt(msg['level'])/cols)) + "%");
 	console.log("pg", pgXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -148,6 +149,7 @@ socket.on('mdbNews', function (msg){
 
 	mdbData.push(totalSeconds);
 	mdbXPos.push(100*(parseInt(msg['level'])/cols));
+	$('#mdb-prog').css('width', String(100*(parseInt(msg['level'])/cols)) + "%");
 	console.log("monet", mdbXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -196,6 +198,16 @@ function enterDemo(){
 	$('#demo-container').show();
 
 	rows = 100, cols = 5, chunks = 10;
+
+	for(i = 1; i <= chunks; i++){
+		$('#inter-accordion').append(
+			"<li><div class='collapsible-header'>Chunk " + i 
+			+ "</div><div class='chunk collapsible-body'>"
+			+ "<ul class='collapsible' data-collapsible='accordion'></ul></div></li>"
+		);
+	}
+
+	$('.collapsible').collapsible();
 
 	socket.emit('interStart', [rows, cols, chunks]);
 
@@ -256,8 +268,8 @@ function enterDemo(){
 		animationCount: 1,
 		animationPauseTime : 0,
 		animationBackward: true,
-		xAxisLabel : "Time (sec)",
-		yAxisLabel : "Percent Built (%)"
+		xAxisLabel : "Percent Built (%)",
+		yAxisLabel : "Time (sec)"
 	};
 
 	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
@@ -288,13 +300,37 @@ socket.on('interNews', function (msg){
 	console.log("Updated", mdbData);
 	console.log(msg);
 
+	var stat = msg['stat'].split(",");
+
+	var stats="";
+
+	for (i = 0, len = stat.length; i < len; ++i) {
+
+		stats += "<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + stat[i] + " onclick='nodeClick(" + stat[i] + ")'>o</button></td>";
+	}
+
+	$('.chunk ul').prepend('<li><div class="collapsible-header">Level ' + msg['level'] + '</div><div class="collapsible-body"  style="overflow-x: auto; text-align: center;"><table><tr>' + stats + '</tr></table></div></li>');
+
+	$('.collapsible').collapsible();
+
+
+	$(".node").heatcolor(
+		function() { return $(this).val(); },
+		{	lightness: 0,
+			colorStyle: 'greentored',
+		}
+	);
+
 	/*interCache+=parseInt(msg['cache']);
 	console.log(interCache);
 
 	$('#inter-cache').html(interCache);*/
 
 });
-
+function nodeClick(val){
+	$("#node-modal p").html(val);
+	$('#node-modal').openModal();
+}
 
 
 

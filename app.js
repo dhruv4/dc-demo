@@ -44,7 +44,7 @@ io.on('connection', function(socket){
 
         console.log("interaction started");
 
-        var interDummy = spawn('python3', ["pgDummy.py", params[0], params[1], params[2]]);
+        var interDummy = spawn('python3', ["interDummy.py", params[0], params[1], params[2]]);
         interDummy.stdout.on('data', function (output) { 
             
             if(String(output).trim() == "done"){
@@ -52,7 +52,7 @@ io.on('connection', function(socket){
             } else {
                 var temp = String(output).split(' ');
                 console.log("inter", temp);
-                io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim()});
+                io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), stat: temp[2].trim()});
             }
         });
 

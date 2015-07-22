@@ -29,3 +29,10 @@
 #inter-wrap img {
 	width: 100%;
 }
+.chunk.collapsible-body {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+tr {
+  overflow-x: scroll;
+}
