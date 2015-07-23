@@ -1,5 +1,4 @@
 var socket = io();
-//var socket = io.connect("http://dcdemo-daslab.rhcloud.com:8000");
 var perfgraph;
 var opt, labels;
 var data, pgData, mdbData, cData;
