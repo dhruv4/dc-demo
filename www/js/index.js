@@ -6,6 +6,8 @@ var xPos, pgXPos, mdbXPos, cXPos;
 var totalSeconds = 0;
 var cols, rows, chunks;
 var pgCache = 0, cCache = 0, mdbCache = 0;
+var treeData = [{name:"null"}];
+var tree, root, svg, iTree, duration, diagonal; //d3tree variables
 
 function enterTest(){
 
@@ -31,7 +33,9 @@ function startClick(){
 	    }
 	    
 	    for (i = 0, len = timer.length; i < len; ++i) {
-	    	timer[i].textContent = (hours ? (hours > 9 ? hours : "0" + hours) : "00") + ":" + (minutes ? (minutes > 9 ? minutes : "0" + minutes) : "00") + ":" + (seconds > 9 ? seconds : "0" + seconds);
+	    	timer[i].textContent = (hours ? (hours > 9 ? hours : "0" 
+	    		+ hours) : "00") + ":" + (minutes ? (minutes > 9 ? minutes : "0" + minutes) : "00") 
+	    		+ ":" + (seconds > 9 ? seconds : "0" + seconds);
 	    }
 	    timeIt();
 	}
@@ -197,7 +201,7 @@ function enterDemo(){
 	$('#test-container').remove();
 	$('#demo-container').show();
 
-	rows = 100, cols = 5, chunks = 10;
+	rows = 100, cols = 6, chunks = 10;
 
 	for(i = 1; i <= chunks; i++){
 		$('#inter-accordion').append(
@@ -274,12 +278,40 @@ function enterDemo(){
 
 	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
 
+	// ************** Generate the d3tree diagram  *****************
+	var margin = {top: 40, right: 50, bottom: 20, left: 50},
+		width = 300 - margin.right - margin.left,
+		height = 300 - margin.top - margin.bottom;
+
+	iTree = 0, duration = 450;
+
+	tree = d3.layout.tree()
+		.size([height, width]);
+
+	diagonal = d3.svg.diagonal()
+		.projection(function(d) { return [d.x, d.y]; });
+
+	svg = d3.select("main #node-modal #modalTree").append("svg")
+		.attr("width", width + margin.right + margin.left)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(0," + margin.top + ")");
+
+	root = treeData[0];
+	root.x0 = 0;
+	root.y0 = 0;
+
+	update(root);
+
+	d3.select(self.frameElement).style("height", "300px");
+
 }
+
 socket.on('interNews', function (msg){
 
 	data.push(totalSeconds);
 	xPos.push(100*(parseInt(msg['level'])/cols));
-	console.log("monet", xPos);
+	console.log("inter", xPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
 		xBegin : 0,
@@ -297,29 +329,36 @@ socket.on('interNews', function (msg){
 		]
 	}
 	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);
-	console.log("Updated", mdbData);
+	console.log("Updated", data);
 	console.log(msg);
 
-	var stat = msg['stat'].split(",");
+	var stat = JSON.parse(msg['stat']);
 
-	var stats="";
+	stats = "";
 
-	for (i = 0, len = stat.length; i < len; ++i) {
-
-		stats += "<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + stat[i] + " onclick='nodeClick(" + stat[i] + ")'>o</button></td>";
-	}
-
-	$('.chunk ul').prepend('<li><div class="collapsible-header">Level ' + msg['level'] + '</div><div class="collapsible-body"  style="overflow-x: auto; text-align: center;"><table><tr>' + stats + '</tr></table></div></li>');
-
-	$('.collapsible').collapsible();
+	console.log(stat);
 
 
-	$(".node").heatcolor(
-		function() { return $(this).val(); },
-		{	lightness: 0,
-			colorStyle: 'greentored',
+		for (var key in stat) {
+			if (stat.hasOwnProperty(key)) {
+				//alert(key + " -> " + stat[key]);
+				if(parseInt(msg['level']) == 1)
+					stats += "<td><button class='nodeone btn-floating btn-large waves-effect waves-light' value=" + key + " onclick='nodeClick(" + key + ",[" + stat[key] + "])'><i class='material-icons'>data_usage</i></button></td>";
+				else
+					stats += "<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + key + " onclick='nodeClick(" + key + ",[" + stat[key] + "])'><i class='material-icons'>data_usage</i></button></td>";
+			}
 		}
-	);
+
+		$('.chunk ul').prepend('<li><div class="collapsible-header">Level ' + msg['level'] + '</div><div class="collapsible-body"  style="overflow-x: auto; text-align: center;"><table><tr>' + stats + '</tr></table></div></li>');
+
+		$('.collapsible').collapsible();
+
+
+		$(".node").heatcolor(
+			function() { return $(this).val(); },
+			{	lightness: 0,colorStyle: 'greentored' }
+		);
+	
 
 	/*interCache+=parseInt(msg['cache']);
 	console.log(interCache);
@@ -327,10 +366,151 @@ socket.on('interNews', function (msg){
 	$('#inter-cache').html(interCache);*/
 
 });
-function nodeClick(val){
-	$("#node-modal p").html(val);
+
+function nodeClick(val, list){
+
+	if(val instanceof Array){
+		var tbl = "<table class='centered responsive-table'><thead><tr>"
+		+ "<th>Mode</th><th>Mean</th><th>Median</th><th>Standard Deviation</th><th>Variance</th>"
+		+ "</tr></thead><tbody><tr>"
+		for (i = 0, len = val.length; i < len; ++i){
+
+			tbl += "<td>" + val[i] + "</td>";
+
+		}
+		tbl += "</tr></tbody></table>"
+		$("#node-modal p").html(tbl);
+		$("#node-modal h5").hide();
+	} else {
+		$("#node-modal p").html([val]);
+		$("#node-modal h5").show();
+	}
+
+	treeData[0] = {children:[]};
+
+	for (i = 0, len = list.length; i < len; ++i){
+
+		treeData[0].children[i] = {name: "col " + String(list[i])};
+		//treeData[0].children[i] = {name: "col " + Math.random()};
+	}
+
+	root = treeData[0];
+	root.x0 = 0;
+	root.y0 = 0;
+
+	$('#node-modal #modalTree svg g').empty();
+
+	update(root);
+
+	console.log("treeData", treeData);
+
 	$('#node-modal').openModal();
 }
 
+function update(source) {
 
+  // Compute the new tree layout.
+  var nodes = tree.nodes(root).reverse(),
+    links = tree.links(nodes);
+
+  // Normalize for fixed-depth.
+  nodes.forEach(function(d) { d.y = d.depth * 180; });
+
+  // Update the nodes…
+  var node = svg.selectAll("g.node")
+    .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+  // Enter any new nodes at the parent's previous position.
+  var nodeEnter = node.enter().append("g")
+    .attr("class", "node")
+    .attr("transform", function(d) { return "translate(" + source.x0 + "," + source.y0 + ")"; })
+    .on("click", click);
+
+  nodeEnter.append("circle")
+    .attr("r", 1e-6)
+    .style("fill", function(d) { return d._children ? "rgba(213, 0, 0, 0.5)" : "#fff"; });
+
+  /*nodeEnter.append("text")
+    .attr("x", function(d) { return d.children || d._children ? -13 : 13; })
+    .attr("dy", ".35em")
+    .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+    .text(function(d) { return d.name; })
+    .style("fill-opacity", 1e-6);*/
+
+	nodeEnter.append("text")
+		.attr("y", function(d) { 
+		return d.children || d._children ? -18 : 18; })
+		.attr("dy", ".35em")
+		.attr("text-anchor", "middle")
+		.text(function(d) { return d.name; })
+		.style("fill-opacity", 1);
+
+  // Transition nodes to their new position.
+  var nodeUpdate = node.transition()
+    .duration(duration)
+    .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+  nodeUpdate.select("circle")
+    .attr("r", 10)
+    .style("fill", function(d) { return d._children ? "rgba(213, 0, 0, 0.5)" : "#fff"; });
+
+  nodeUpdate.select("text")
+    .style("fill-opacity", 1);
+
+  // Transition exiting nodes to the parent's new position.
+  var nodeExit = node.exit().transition()
+    .duration(duration)
+    .attr("transform", function(d) { return "translate(" + source.x + "," + source.y + ")"; })
+    .remove();
+
+  nodeExit.select("circle")
+    .attr("r", 1e-6);
+
+  nodeExit.select("text")
+    .style("fill-opacity", 1e-6);
+
+  // Update the links…
+  var link = svg.selectAll("path.link")
+    .data(links, function(d) { return d.target.id; });
+
+  // Enter any new links at the parent's previous position.
+  link.enter().insert("path", "g")
+    .attr("class", "link")
+    .attr("d", function(d) {
+    var o = {x: source.x0, y: source.y0};
+    return diagonal({source: o, target: o});
+    });
+
+  // Transition links to their new position.
+  link.transition()
+    .duration(duration)
+    .attr("d", diagonal);
+
+  // Transition exiting nodes to the parent's new position.
+  link.exit().transition()
+    .duration(duration)
+    .attr("d", function(d) {
+    var o = {x: source.x, y: source.y};
+    return diagonal({source: o, target: o});
+    })
+    .remove();
+
+  // Stash the old positions for transition.
+  nodes.forEach(function(d) {
+  d.x0 = d.x;
+  d.y0 = d.y;
+  });
+
+}
+
+function click(d) {
+  if (d.children) {
+  d._children = d.children;
+  d.children = null;
+  } else {
+  d.children = d._children;
+  d._children = null;
+  }
+  update(d);
+}
 

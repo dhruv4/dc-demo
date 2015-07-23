@@ -6,12 +6,13 @@
 /*D3 Styles*/
 .node circle {
   fill: #fff;
-  stroke: steelblue;
+  stroke: rgb(213, 0, 0);
   stroke-width: 1.5px;
 }
 
-.node {
+.node, .nodeone {
   font: 10px sans-serif;
+  cursor: pointer;
 }
 
 .link {
@@ -35,4 +36,7 @@
 }
 tr {
   overflow-x: scroll;
+}
+#test-container .card-content {
+  padding: 15px !important;
 }

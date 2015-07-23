@@ -7,7 +7,7 @@ var io = require('socket.io')(http);
 app.use(express.static('www'));
 
 app.get('/', function(req, res){
-  res.sendFile(__dirname + '/www/index.html');
+    res.sendFile(__dirname + '/www/index.html');
 });
 
 io.on('connection', function(socket){
@@ -50,7 +50,7 @@ io.on('connection', function(socket){
             if(String(output).trim() == "done"){
                 io.sockets.emit('interDone', "done");
             } else {
-                var temp = String(output).split(' ');
+                var temp = String(output).split('|');
                 console.log("inter", temp);
                 io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), stat: temp[2].trim()});
             }
@@ -64,3 +64,11 @@ io.on('connection', function(socket){
 http.listen(8000, function(){
     console.log('listening on *:8000');
 });
+
+
+
+
+
+
+
+
