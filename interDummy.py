@@ -5,8 +5,6 @@ rows = int(sys.argv[1])
 cols = int(sys.argv[2])
 chunks = int(sys.argv[3])
 
-time.sleep(100)
-
 for y in range(1, chunks+1):
 	for x in range(1, cols+1):
 

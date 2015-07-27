@@ -44,15 +44,16 @@ io.on('connection', function(socket){
 
         console.log("interaction started");
 
-        var interDummy = spawn('python3', ["interDummy.py", params[0], params[1], params[2]]);
-        interDummy.stdout.on('data', function (output) { 
+        //var interDem = spawn('python3', ["interDummy.py", params[0], params[1], params[2]]);
+        var interDem = spawn('python3', ["pgdc.py", params[0], params[1], params[2]]);
+        interDem.stdout.on('data', function (output) { 
             
             if(String(output).trim() == "done"){
                 io.sockets.emit('interDone', "done");
                 console.log("done");
             } else {
                 var temp = String(output).split('|');
-                //console.log("inter", {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                console.log("inter", {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
                 io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
 
             }
