@@ -49,10 +49,12 @@ io.on('connection', function(socket){
             
             if(String(output).trim() == "done"){
                 io.sockets.emit('interDone', "done");
+                console.log("done");
             } else {
                 var temp = String(output).split('|');
-                console.log("inter", temp);
-                io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), stat: temp[2].trim()});
+                //console.log("inter", {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+
             }
         });
 

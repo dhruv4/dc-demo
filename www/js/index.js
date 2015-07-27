@@ -5,6 +5,7 @@ var data, pgData, mdbData, cData;
 var xPos, pgXPos, mdbXPos, cXPos;
 var totalSeconds = 0;
 var cols, rows, chunks;
+var counter = 0;
 var pgCache = 0, cCache = 0, mdbCache = 0;
 var treeData = [{name:"null"}];
 var tree, root, svg, iTree, duration, diagonal; //d3tree variables
@@ -83,7 +84,7 @@ function startClick(){
 	}
 
 	opt = {
-		animationLeftToRight : true,
+		animationLeftToRight : false,
 		animationSteps : 5,
 		animationEasing: "linear",
 		canvasBorders : false,
@@ -134,7 +135,7 @@ socket.on('pgNews', function (msg){
 			}
 		]
 	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);
+	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
 	console.log("Updated", pgData);
 	console.log(msg);
 
@@ -180,7 +181,7 @@ socket.on('mdbNews', function (msg){
 			}
 		]
 	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);
+	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
 	console.log("Updated", mdbData);
 	console.log(msg);
 
@@ -203,12 +204,17 @@ function enterDemo(){
 
 	rows = 100, cols = 6, chunks = 10;
 
+	//PRE-CREATE CHUNKS (with levels) BUT DONT SHOW
+
 	for(i = 1; i <= chunks; i++){
 		$('#inter-accordion').append(
-			"<li><div class='collapsible-header'>Chunk " + i 
-			+ "</div><div class='chunk collapsible-body'>"
+			"<li id='lichunk" + i + "' style='display: none;'><div class='collapsible-header'>Chunk " + i 
+			+ "</div><div id='chunk" + i + "' class='chunk collapsible-body'>"
 			+ "<ul class='collapsible' data-collapsible='accordion'></ul></div></li>"
 		);
+		for(j = 1; j <= cols; j++){
+			$('#chunk' + i + ' ul').prepend('<li><div class="collapsible-header">Level ' + j + '</div><div class="collapsible-body"  style="overflow-x: auto; text-align: center;"><table class="centered"><tbody><tr id="trlevel' + j + '"></tr></tbody></table></div></li>');
+		}
 	}
 
 	$('.collapsible').collapsible();
@@ -260,8 +266,8 @@ function enterDemo(){
 	}
 
 	opt = {
-		animationLeftToRight : true,
-		animationSteps : 20,
+		animationLeftToRight : false,
+		animationSteps : 5,
 		animationEasing: "linear",
 		canvasBorders : false,
 		legend : true,
@@ -309,8 +315,12 @@ function enterDemo(){
 
 socket.on('interNews', function (msg){
 
+	$(".preloader-wrapper").hide();
+	$("#inter-accordion").show();
+
+	counter++;
 	data.push(totalSeconds);
-	xPos.push(100*(parseInt(msg['level'])/cols));
+	xPos.push(100*((counter)/(cols*chunks)));
 	console.log("inter", xPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -329,35 +339,26 @@ socket.on('interNews', function (msg){
 		]
 	}
 	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);
+	
 	console.log("Updated", data);
 	console.log(msg);
 
-	var stat = JSON.parse(msg['stat']);
+	console.log('lichunk' + msg['chunk']);
 
-	stats = "";
+	$('#lichunk' + msg['chunk']).show();
 
-	console.log(stat);
+	if(parseInt(msg['level']) == 1)
+		$('#chunk' + msg['chunk'] + ' #trlevel' + msg['level']).append("<td><button class='nodeone btn-floating btn-large waves-effect waves-light' value=" + msg['stat'] + " onclick='nodeClick(" + msg['stat'] + "," + msg['childs'] + ")'><i class='material-icons'>data_usage</i></button></td>");
+	else
+		$('#chunk' + msg['chunk'] + ' #trlevel' + msg['level']).append("<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + msg['stat'] + " onclick='nodeClick(" + msg['stat'] + "," + msg['childs'] + ")'><i class='material-icons'>data_usage</i></button></td>");
 
-
-		for (var key in stat) {
-			if (stat.hasOwnProperty(key)) {
-				//alert(key + " -> " + stat[key]);
-				if(parseInt(msg['level']) == 1)
-					stats += "<td><button class='nodeone btn-floating btn-large waves-effect waves-light' value=" + key + " onclick='nodeClick(" + key + ",[" + stat[key] + "])'><i class='material-icons'>data_usage</i></button></td>";
-				else
-					stats += "<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + key + " onclick='nodeClick(" + key + ",[" + stat[key] + "])'><i class='material-icons'>data_usage</i></button></td>";
-			}
-		}
-
-		$('.chunk ul').prepend('<li><div class="collapsible-header">Level ' + msg['level'] + '</div><div class="collapsible-body"  style="overflow-x: auto; text-align: center;"><table><tr>' + stats + '</tr></table></div></li>');
-
-		$('.collapsible').collapsible();
+	$('.collapsible').collapsible();
 
 
-		$(".node").heatcolor(
-			function() { return $(this).val(); },
-			{	lightness: 0,colorStyle: 'greentored' }
-		);
+	$(".node").heatcolor(
+		function() { return $(this).val(); },
+		{	lightness: 0,colorStyle: 'greentored' }
+	);
 	
 
 	/*interCache+=parseInt(msg['cache']);
