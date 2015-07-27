@@ -47,15 +47,27 @@ io.on('connection', function(socket){
         //var interDem = spawn('python3', ["interDummy.py", params[0], params[1], params[2]]);
         var interDem = spawn('python3', ["pgdc.py", params[0], params[1], params[2]]);
         interDem.stdout.on('data', function (output) { 
-            
+
             if(String(output).trim() == "done"){
                 io.sockets.emit('interDone', "done");
                 console.log("done");
             } else {
-                var temp = String(output).split('|');
-                console.log("inter", {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
-                io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                
+                //SPLIT OUTPUT BY '\n' THEN LOOP THROUGH
+                console.log(String(output));
+                var loop = String(output).split('\n');
 
+                for (var i = loop.length - 1; i >= 0; i--) {
+
+                    if(loop[i] == '')
+                        continue;
+
+                    console.log("loop", loop);
+                    var temp = loop[i].split('|');
+                    console.log("inter", {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                    io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                
+                }
             }
         });
 
