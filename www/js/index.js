@@ -5,7 +5,7 @@ var data, pgData, mdbData, cData;
 var xPos, pgXPos, mdbXPos, cXPos;
 var totalSeconds = 0;
 var cols, rows, chunks;
-var counter = 0;
+var counter = 0, pgcount = 0, mdbcount=0, ccount=0;
 var pgCache = 0, cCache = 0, mdbCache = 0;
 var treeData = [{name:"null"}];
 var tree, root, svg, iTree, duration, diagonal; //d3tree variables
@@ -107,8 +107,10 @@ function startClick(){
 socket.on('pgNews', function (msg){
 
 	pgData.push(totalSeconds);
-	pgXPos.push(100*(parseInt(msg['level'])/cols));
-	$('#pg-prog').css('width', String(100*(parseInt(msg['level'])/cols)) + "%");
+	pgcount++;
+	pgXPos.push(100*(pgcount/chunks*cols));
+	$('#pg-prog').css('width', String(100*(pgcount/chunks*cols)) + "%");
+	console.log($('#pg-prog').css('width'));
 	//console.log("pg", pgXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -153,8 +155,10 @@ socket.on('pgDone', function (msg){
 socket.on('mdbNews', function (msg){
 
 	mdbData.push(totalSeconds);
-	mdbXPos.push(100*(parseInt(msg['level'])/cols));
-	$('#mdb-prog').css('width', String(100*(parseInt(msg['level'])/cols)) + "%");
+	mdbcount++;
+	mdbXPos.push(100*(mdbcount/chunks*cols));
+	$('#mdb-prog').css('width', String(100*(mdbcount/chunks*cols)) + "%");
+	console.log($('#mdb-prog').css('width'));
 	//console.log("monet", mdbXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],

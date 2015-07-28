@@ -16,28 +16,68 @@ io.on('connection', function(socket){
     socket.on('start', function (params) {
         console.log('client sent ' + params);
 
-        var pgDummy = spawn('python3', ["pgDummy.py", params[0], params[1], params[2]]);
-        pgDummy.stdout.on('data', function (output) { 
+        //var pgPerf = spawn('python3', ["pgDummy.py", params[0], params[1], params[2]]);
+        var pgPerf = spawn('python3', ["pgperf.py", params[0], params[1], params[2]]);
+        
+        pgPerf.stdout.on('data', function (output) { 
             
-            if(String(output).trim() == "done"){
-                io.sockets.emit('pgDone', "done");
-            } else {
-                var temp = String(output).split(' ');
-                console.log("pg", temp);
-                io.sockets.emit('pgNews', {cache: temp[0], level: temp[1].trim()});
+
+            var loop = String(output).split('&');
+            //console.log("loop", loop);
+
+            for (var i = loop.length - 1; i >= 0; i--) {
+
+                if(loop[i].trim() == "done"){
+                    io.sockets.emit('pgDone', "done");
+                    console.log("pgdone");
+                    continue;
+                }
+
+                if(loop[i].indexOf('|') < 0)
+                    continue;
+
+                var temp = String(loop[i]).split('|');
+                //console.log("pg", temp);
+                io.sockets.emit('pgNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
             }
         });
-        var mdbDummy = spawn('python3', ["mdbDummy.py", params[0], params[1], params[2]]);
-        mdbDummy.stdout.on('data', function (output) { 
+        /*var mdbPerf = spawn('python3', ["mdbDummy.py", params[0], params[1], params[2]]);
+        mdbPerf.stdout.on('data', function (output) { 
             
             if(String(output).trim() == "done"){
                 io.sockets.emit('mdbDone', "done");
             } else {
                 var temp = String(output).split(' ');
                 console.log("monet", temp);
-                io.sockets.emit('mdbNews', {cache: temp[0], level: temp[1].trim()});
+                io.sockets.emit('mdbNews', {cache: temp[0], chunk: temp[1].trim()});
+            }
+        });*/
+
+        var mdbPerf = spawn('python3', ["mdbperf.py", params[0], params[1], params[2]]);
+        
+        mdbPerf.stdout.on('data', function (output) { 
+            
+
+            var loop = String(output).split('&');
+            //console.log("loop", loop);
+
+            for (var i = loop.length - 1; i >= 0; i--) {
+
+                if(loop[i].trim() == "done"){
+                    io.sockets.emit('mdbDone', "done");
+                    console.log("mdbdone");
+                    continue;
+                }
+
+                if(loop[i].indexOf('|') < 0)
+                    continue;
+
+                var temp = String(loop[i]).split('|');
+                //console.log("mdb", temp);
+                io.sockets.emit('mdbNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
             }
         });
+
     });
 
     socket.on('interStart', function (params){
