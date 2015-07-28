@@ -40,3 +40,6 @@ tr {
 #test-container .card-content {
   padding: 15px !important;
 }
+.card.z-depth-0 {
+  box-shadow: none !important;
+}
