@@ -44,7 +44,7 @@ io.on('connection', function(socket){
 
         console.log("interaction started");
 
-        //var interDem = spawn('python3', ["interDummy.py", params[0], params[1], params[2]]);
+        console.log(params);
         var interDem = spawn('python3', ["pgdc.py", params[0], params[1], params[2]]);
         interDem.stdout.on('data', function (output) { 
 
@@ -54,18 +54,18 @@ io.on('connection', function(socket){
             } else {
                 
                 //SPLIT OUTPUT BY '\n' THEN LOOP THROUGH
-                console.log(String(output));
-                var loop = String(output).split('\n');
+                //console.log(String(output));
+                var loop = String(output).split('&');
 
                 for (var i = loop.length - 1; i >= 0; i--) {
 
-                    if(loop[i] == '')
+                    if(loop[i].indexOf('|') < 0)
                         continue;
 
-                    console.log("loop", loop);
+                    //console.log("loop", loop);
                     var temp = loop[i].split('|');
-                    console.log("inter", {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
-                    io.sockets.emit('interNews', {cache: temp[0], level: temp[1].trim(), chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                    //console.log("inter", {cache: temp[0], level: temp[1], chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
+                    io.sockets.emit('interNews', {cache: temp[0].trim(), level: temp[1].trim(), chunk: temp[2].trim(), stat: temp[3].trim(), childs: temp[4].trim()});
                 
                 }
             }

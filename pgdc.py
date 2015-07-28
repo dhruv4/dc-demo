@@ -82,7 +82,7 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1, col2, col3, col4, col5) VALUES (%s, %s, %s, %s, %s, %s)",
 				[ID, avg, std,var,med,mod])
 
-			print(str(random.randint(23,28123)) + "|" + str(1) + "|" + str(c) + "|" + str([float(avg),float(std),float(var),float(med),float(mod)]) + "|" + str([i]), flush=True, sep="")
+			print(str(random.randint(23,28123)) + "|" + str(1) + "|" + str(c + 1) + "|" + str([float(avg),float(std),float(var),float(med),float(mod)]) + "|" + str([i]) + "&", flush=True, sep="")
 			sys.stdout.flush()
 			#cache, level, chunk, stat, childs
 
@@ -113,7 +113,7 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
 				cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 					[idChunkCombine(2**i + 2**j, c, numChunks),corr])
 
-				print(str(random.randint(23,28123)) + "|" + str(2) + "|" + str(c) + "|" + str(corr) + "|" + str([i,j]), flush=True, sep="")
+				print(str(random.randint(23,28123)) + "|" + str(2) + "|" + str(c + 1) + "|" + str(corr) + "|" + str([i,j]) + "&", flush=True, sep="")
 				sys.stdout.flush()
 				#cache, level, chunk, stat, childs
 
@@ -143,12 +143,12 @@ def createDCTableLeveln(table, levels, numChunks, numCols, numRows):
 							vals.append(cur.fetchone()[0])
 					kids.append(x)
 		
-			correlation = sum(vals) + 42
+			correlation = sum(vals)
 
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 				[idChunkCombine(i, c, numChunks), correlation])
 
-			print(str(random.randint(23,28123)) + "|" + str(len(kids)) + "|" + str(c) + "|" + str(correlation) + "|" + str(kids), flush=True, sep="")
+			print(str(random.randint(23,28123)) + "|" + str(len(kids)) + "|" + str(c + 1) + "|" + str(correlation) + "|" + str(kids) + "&", flush=True, sep="")
 			sys.stdout.flush()
 
 	conn.commit()
@@ -176,9 +176,9 @@ def insertRandData(cur, conn, table, length):
 		cur.execute(exe, [random.randint(0, 5) for x in range(len(colList))])
 
 def demo():
-	numChunks = 10
-	numCols = 6
-	numRows = 100
+	numRows = int(sys.argv[1])
+	numCols = int(sys.argv[2])
+	numChunks = int(sys.argv[3])
 
 	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
@@ -197,6 +197,8 @@ def demo():
 	#print("done")
 
 	conn.commit()
+
+	#drop table here?
 
 	print("done")
 	#print(time.time() - startTime)

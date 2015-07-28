@@ -51,7 +51,7 @@ function startClick(){
 	cols = parseInt($("#col-slide").val());
 	var chunks = parseInt($("#chunk-slide").val());
 
-	console.log(rows, cols, chunks);
+	//console.log(rows, cols, chunks);
 
 	socket.emit('start', [rows, cols, chunks]);
 
@@ -109,7 +109,7 @@ socket.on('pgNews', function (msg){
 	pgData.push(totalSeconds);
 	pgXPos.push(100*(parseInt(msg['level'])/cols));
 	$('#pg-prog').css('width', String(100*(parseInt(msg['level'])/cols)) + "%");
-	console.log("pg", pgXPos);
+	//console.log("pg", pgXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
 		xBegin : 0,
@@ -136,11 +136,11 @@ socket.on('pgNews', function (msg){
 		]
 	}
 	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
-	console.log("Updated", pgData);
-	console.log(msg);
+	//console.log("Updated", pgData);
+	//console.log(msg);
 
 	pgCache+=parseInt(msg['cache']);
-	console.log(pgCache);
+	//console.log(pgCache);
 
 	$('#pg-cache').html(pgCache);
 
@@ -155,7 +155,7 @@ socket.on('mdbNews', function (msg){
 	mdbData.push(totalSeconds);
 	mdbXPos.push(100*(parseInt(msg['level'])/cols));
 	$('#mdb-prog').css('width', String(100*(parseInt(msg['level'])/cols)) + "%");
-	console.log("monet", mdbXPos);
+	//console.log("monet", mdbXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
 		xBegin : 0,
@@ -182,11 +182,11 @@ socket.on('mdbNews', function (msg){
 		]
 	}
 	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
-	console.log("Updated", mdbData);
-	console.log(msg);
+	//console.log("Updated", mdbData);
+	//console.log(msg);
 
 	mdbCache+=parseInt(msg['cache']);
-	console.log(mdbCache);
+	//console.log(mdbCache);
 
 	$('#mdb-cache').html(mdbCache);
 
@@ -321,7 +321,7 @@ socket.on('interNews', function (msg){
 	counter++;
 	data.push(totalSeconds);
 	xPos.push(100*((counter)/(cols*chunks)));
-	console.log("inter", xPos);
+	//console.log("inter", xPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
 		xBegin : 0,
@@ -340,10 +340,10 @@ socket.on('interNews', function (msg){
 	}
 	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);
 	
-	console.log("Updated", data);
-	console.log(msg);
+	//console.log("Updated", data);
+	//console.log(msg);
 
-	console.log('lichunk' + msg['chunk']);
+	//console.log('lichunk' + msg['chunk']);
 
 	$('#lichunk' + msg['chunk']).show();
 
@@ -403,7 +403,7 @@ function nodeClick(val, list){
 
 	update(root);
 
-	console.log("treeData", treeData);
+	//console.log("treeData", treeData);
 
 	$('#node-modal').openModal();
 }
