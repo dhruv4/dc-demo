@@ -41,17 +41,6 @@ io.on('connection', function(socket){
                 io.sockets.emit('pgNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
             }
         });
-        /*var mdbPerf = spawn('python3', ["mdbDummy.py", params[0], params[1], params[2]]);
-        mdbPerf.stdout.on('data', function (output) { 
-            
-            if(String(output).trim() == "done"){
-                io.sockets.emit('mdbDone', "done");
-            } else {
-                var temp = String(output).split(' ');
-                console.log("monet", temp);
-                io.sockets.emit('mdbNews', {cache: temp[0], chunk: temp[1].trim()});
-            }
-        });*/
 
         var mdbPerf = spawn('python3', ["mdbperf.py", params[0], params[1], params[2]]);
         
