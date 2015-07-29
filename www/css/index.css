@@ -1,6 +1,16 @@
+ body {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
 .nav-wrapper img 	{
 	margin-top: 5px;
-	height: 55px;
+	height: 45px;
 }
 
 /*D3 Styles*/
@@ -42,4 +52,61 @@ tr {
 }
 .card.z-depth-0 {
   box-shadow: none !important;
+}
+nav, .navbarfixed, .nav-wrapper {
+  height: 50px;
+  line-height: 50px;
+}
+/*footer*/
+#seas-link, #harvard-link, #daslab-link{
+    background-repeat: no-repeat;
+    display:block;
+    height: 76px;
+    margin: 30px auto 25px;
+    text-indent: -9999px;
+    overflow: hidden;
+}
+
+#seas-link {
+    width: 263px;
+    background-size: 263px 156px;
+    background-image: url(../media/seas_logo.png);
+}
+
+#harvard-link {
+    width: 290px;
+    background-size: 290px 156px;
+    background-image: url(../media/harvard_logo.png);
+}
+
+#daslab-link {
+    width: 196px;
+    background-size: 196px 156px;
+    background-image: url(../media/daslab_logo.png);
+}
+
+#seas-link:hover{
+    background-position-y: -77px;
+}
+
+#harvard-link:hover{
+    background-position-y: -77px;
+}
+
+#daslab-link:hover{
+    background-position-y: -79px;
+}
+
+@media(min-width:992px) {
+#seas-link {
+    margin-right: 25px;
+}
+#daslab-link {
+    margin-left: 25px;
+}
+}
+@media(max-width:992px) {
+    #seas-link{
+        width: 290px;
+    }
 }

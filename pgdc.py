@@ -182,16 +182,18 @@ def demo():
 
 	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
-	'''
-	createTable(cur, conn, "demo", numCols)
-	insertRandData(cur, conn, "demo", numRows)
+
+
+	createTable(cur, conn, "demoi", numCols)
+	insertRandData(cur, conn, "demoi", numRows)
 	conn.commit()
-	'''
-	createDCTableSetup("demo", numCols, numChunks, numCols, numRows)
+
+
+	createDCTableSetup("demoi", numCols, numChunks, numCols, numRows)
 	#print("setup done")
-	createDCTableLevel1("demo", numCols, numChunks, numCols, numRows)
+	createDCTableLevel1("demoi", numCols, numChunks, numCols, numRows)
 	#print("level 1 made")
-	createDCTableLevel2("demo", numCols, numChunks, numCols, numRows)
+	createDCTableLevel2("demoi", numCols, numChunks, numCols, numRows)
 	#print("level 2 made")
 	createDCTableLeveln("demo", numCols, numChunks, numCols, numRows)
 	#print("done")

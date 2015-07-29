@@ -20,10 +20,8 @@
 		<header>
 			<div class="navbar-fixed">
 				<nav>
-					<div class="nav-wrapper grey">
+					<div class="nav-wrapper blue">
 						<a href="/" class="brand-logo center white-text">Data Canopy</a>
-						<a href="//seas.harvard.edu" class="brand-logo left"><img src="media/seas.png"></a>
-						<a href="//daslab.seas.harvard.edu" class="brand-logo right"><img src="media/daslab.png"></a>
 					</div>
 				</nav>
 			</div>
@@ -37,7 +35,7 @@
 								<span class="col s12 card-title black-text">
 									Performance Comparison
 								</span>
-								<button class="col s6 offset-s3 waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterTest()">Enter</button>
+								<button class="col s6 offset-s3 waves-effect waves-light btn blue" type="button" id="join-list" onclick="enterTest()">Enter</button>
 							</div>
 						</div>
 					</div>
@@ -47,7 +45,7 @@
 								<span class="col s12 card-title black-text">
 									Interaction Demo
 								</span>
-								<button class="col s6 offset-s3 waves-effect waves-light btn red accent-4" type="button" id="join-list" onclick="enterDemo()">Enter</button>
+								<button class="col s6 offset-s3 waves-effect waves-light btn blue" type="button" id="join-list" onclick="enterDemo()">Enter</button>
 							</div>
 						</div>
 					</div>
@@ -75,23 +73,22 @@
 								</div>
 							</form>
 							<div class="row">
-								<button id="start-btn" onclick="startClick()" class="col s4 offset-s4 waves-effect waves-light btn red accent-4">Start</button>
+								<button id="start-btn" onclick="startClick()" class="col s4 offset-s4 waves-effect waves-light btn blue">Start</button>
 							</div>
 						</div>
 					</div>
 				</div>
-				<div class="row">
+				<div id="perf-data" class="row">
 					<div class="card col s4 z-depth-0">
 						<div class="card-content">
-							<span class="card-title black-text">MonetDB Graph</span>
-							<div class="progress">
-								<div id="mdb-prog" class="determinate" style="width: 0%"></div>
+							<span class="card-title black-text">MonetDB</span>
+							<div class="progress blue lighten-4">
+								<div id="mdb-prog" class="determinate blue" style="width: 0%"></div>
 							</div>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
-										<span id="mdb-time" class="card-title black-text timer">
-											<time>00:00:00</time>
+										<span id="mdb-time" class="card-title black-text stopwatch">
 										</span>
 										<p>Time</p>
 									</div>
@@ -109,15 +106,14 @@
 					</div>
 					<div class="card col s4 z-depth-0">
 						<div class="card-content">
-							<span class="card-title black-text">C++ Graph</span>
-							<div class="progress">
-								<div id="c++-prog" class="determinate" style="width: 0%"></div>
+							<span class="card-title black-text">C++</span>
+							<div class="progress blue lighten-4">
+								<div id="c++-prog" class="determinate blue" style="width: 0%"></div>
 							</div>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
-										<span id="c++-time" class="card-title black-text timer">
-											<time>00:00:00</time>
+										<span id="c++-time" class="card-title black-text stopwatch">
 										</span>
 										<p>Time</p>
 									</div>
@@ -135,15 +131,14 @@
 					</div>
 					<div class="card col s4 z-depth-0">
 						<div class="card-content">
-							<span class="card-title black-text">Postgres Graph</span>
-							<div class="progress">
-								<div id="pg-prog" class="determinate" style="width: 0%"></div>
+							<span class="card-title black-text">Postgres</span>
+							<div class="progress blue lighten-4">
+								<div id="pg-prog" class="determinate blue" style="width: 0%"></div>
 							</div>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
-										<span id="pg-time" class="card-title black-text timer">
-											<time>00:00:00</time>
+										<span id="pg-time" class="card-title black-text stopwatch">
 										</span>
 										<p>Time</p>
 									</div>
@@ -160,11 +155,10 @@
 						</div>
 					</div>
 				</div>
-				<div class="row">
+				<div class="row" id="perf-graph-row" style="display: none;">
 					<div class="card col s12">
 						<div class="card-image">
 							<canvas id="perfgraph"></canvas>
-							<span class="card-title black-text">Performance Graph</span>
 						</div>
 					</div>
 				</div>
@@ -189,14 +183,16 @@
 					<div id="inter-wrap" class="col s9" style=" overflow: auto; height: 85vh;">
 						<ul id="inter-accordion" class="collapsible popout" data-collapsible="accordion" style="display: none;">
 						</ul>
-						<div class="preloader-wrapper big active">
-							<div class="spinner-layer spinner-red-only">
-								<div class="circle-clipper left">
+						<div class="col s12 m4 offset-m5 valign-wrapper" style="height: 100%;">
+							<div class="preloader-wrapper big active valign">
+								<div class="spinner-layer spinner-blue-only">
+									<div class="circle-clipper left">
+										<div class="circle"></div>
+									</div><div class="gap-patch">
 									<div class="circle"></div>
-								</div><div class="gap-patch">
-								<div class="circle"></div>
-								</div><div class="circle-clipper right">
-									<div class="circle"></div>
+									</div><div class="circle-clipper right">
+										<div class="circle"></div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -208,6 +204,7 @@
 								<!--span class="card-title black-text">Performance Graph</span-->
 							</div>
 						</div>
+						<div id="inter-time" class="stopwatch" style="display:none;"></div>
 						<!--div class="card col s12">
 							<div class="card-content">
 								<span class="card-title black-text">
@@ -237,8 +234,27 @@
 			</div>
 
 		</main>
-		<footer style="font-size: 10px; text-align: center;">
-			<a href="//daslab.seas.harvard.edu">DASLab</a> @ Harvard
+		<footer class="page-footer blue">
+			<div class="row">
+				<div class="col s12 m4">
+					<a id="seas-link" href="http://seas.harvard.edu" target="_blank" title="Harvard SEAS"></a>
+				</div>
+				<div class="col s12 m4 ">
+					<a id="harvard-link" href="http://www.harvard.edu" target="_blank" title="Harvard University">Harvard University</a>
+				</div>
+				<div class="col s12 m4">
+					<a id="daslab-link" href="http://daslab.seas.harvard.edu" target="_blank" title="Harvard DASlab">Harvard DASlab</a>
+				</div>
+			</div>
+			<div class="footer-copyright">
+				<div class="container">
+					<div class="row">
+						<div class="col s12">
+							Copyright &copy; DASlab 2015  – All Rights Reserved
+						</div>
+					</div>
+				</div>
+			</div>
 		</footer>
 	</body>
 </html>

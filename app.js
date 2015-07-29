@@ -12,12 +12,14 @@ app.get('/', function(req, res){
 
 io.on('connection', function(socket){
 
+    var pgPerf, mdbPerf, cPerf;
+
     console.log('a user connected');
     socket.on('start', function (params) {
         console.log('client sent ' + params);
 
         //var pgPerf = spawn('python3', ["pgDummy.py", params[0], params[1], params[2]]);
-        var pgPerf = spawn('python3', ["pgperf.py", params[0], params[1], params[2]]);
+        pgPerf = spawn('python3', ["pgperf.py", params[0], params[1], params[2]]);
         
         pgPerf.stdout.on('data', function (output) { 
             
@@ -42,7 +44,7 @@ io.on('connection', function(socket){
             }
         });
 
-        var mdbPerf = spawn('python3', ["mdbperf.py", params[0], params[1], params[2]]);
+        mdbPerf = spawn('python3', ["mdbperf.py", params[0], params[1], params[2]]);
         
         mdbPerf.stdout.on('data', function (output) { 
             
@@ -65,6 +67,41 @@ io.on('connection', function(socket){
                 //console.log("mdb", temp);
                 io.sockets.emit('mdbNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
+        });
+
+        cPerf = spawn('./demo_performance', [params[1], params[0], params[0]/params[2], 1]);
+        
+        cPerf.stdout.on('data', function (output) { 
+            
+            
+            var loop = String(output).split('&');
+            //console.log("loop", loop);
+
+            for (var i = loop.length - 1; i >= 0; i--) {
+
+                if(loop[i].indexOf('|') < 0)
+                    continue;
+
+                var temp = String(loop[i]).split('|');
+                //console.log("mdb", temp);
+                if(temp[0].trim() == "done"){
+                    io.sockets.emit('cDone', "done");
+                    console.log("cdone");
+                    continue;
+                }
+
+                io.sockets.emit('cNews', {percent: temp[0].trim(), cache: temp[1].trim()});
+            }
+
+        });
+
+
+        socket.on('reset', function () {
+
+            pgPerf.kill();
+            mdbPerf.kill();
+            cPerf.kill();
+
         });
 
     });

@@ -3,6 +3,7 @@ var perfgraph;
 var opt, labels;
 var data, pgData, mdbData, cData;
 var xPos, pgXPos, mdbXPos, cXPos;
+var pgTimer, mdbTimer, cTimer, interTimer;
 var totalSeconds = 0;
 var cols, rows, chunks;
 var counter = 0;
@@ -15,37 +16,30 @@ function enterTest(){
 	$('#splash-container').remove();
 	$('#test-container').show();
 	$('#demo-container').remove();
+	$('.thumb').addClass('blue');
 
 }
 function startClick(){
-	var timer = document.getElementsByClassName('timer'),
-	seconds = 0, minutes = 0, hours = 0, t;
+	
+	pgTimer = new Stopwatch(document.getElementById('pg-time'));
+	mdbTimer = new Stopwatch(document.getElementById('mdb-time'));
+	cTimer = new Stopwatch(document.getElementById('c++-time'));
 
-	function add() {
-	    seconds++;
-	    totalSeconds++;
-	    if (seconds >= 60) {
-	        seconds = 0;
-	        minutes++;
-	        if (minutes >= 60) {
-	            minutes = 0;
-	            hours++;
-	        }
-	    }
-	    
-	    for (i = 0, len = timer.length; i < len; ++i) {
-	    	timer[i].textContent = (hours ? (hours > 9 ? hours : "0" 
-	    		+ hours) : "00") + ":" + (minutes ? (minutes > 9 ? minutes : "0" + minutes) : "00") 
-	    		+ ":" + (seconds > 9 ? seconds : "0" + seconds);
-	    }
-	    timeIt();
-	}
-	function timeIt() {
-	    t = setTimeout(add, 1000);
-	}
-	timeIt();
+	pgTimer.start();
+	mdbTimer.start();
+	cTimer.start();
 
-	$('#start-btn').attr('disabled', 'true');
+	$('#start-btn').text('Reset');
+	$('#start-btn').attr('onclick', 'resetClick()');
+	//Turn into reset
+
+	$('#perf-graph-row').show();
+
+	$("input").prop('disabled', true);
+
+	$('html, body').animate({
+        scrollTop: $("#perf-data").offset().top - 30
+    }, 1000);
 
 	var rows = parseInt($('#row-slide').val());
 	cols = parseInt($("#col-slide").val());
@@ -79,6 +73,15 @@ function startClick(){
 				data : mdbData,
 				xPos : [0],
 				title : "MonetDB"
+			},
+			{
+				fillColor : "rgba(0,187,0,0.5)",
+				strokeColor : "rgba(0,187,0,1)",
+				pointColor : "rgba(0,187,0,1)",
+				pointstrokeColor : "green",
+				data : cData,
+				xPos : [0],
+				title : "C++"
 			}
 		]
 	}
@@ -103,7 +106,87 @@ function startClick(){
 	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
 
 }
+function resetClick(){
 
+	$('#start-btn').text('Start');
+	$('#start-btn').attr('onclick', 'startClick()');
+
+	$("input").prop('disabled', false);
+
+	pgTimer.reset();
+	mdbTimer.reset();
+	cTimer.reset();
+	pgTimer.stop();
+	mdbTimer.stop();
+	cTimer.stop();
+
+	totalSeconds = 0;
+
+	socket.emit('reset');
+
+	pgData = [0], mdbData = [0], cData = [0];
+	pgXPos = [0], mdbXPos = [0], cXPos = [0];
+	pgCache = 0, cCache = 0, mdbCache = 0;
+
+	$('#pg-prog').css('width', "0%");
+	$('#mdb-prog').css('width', "0%");
+	$('#c++-prog').css('width', "0%");
+
+	mydata = {
+		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+		xBegin : 0,
+		xEnd : 100,
+		datasets : [
+			{
+				fillColor : "rgba(220,220,220,0.5)",
+				strokeColor : "rgba(220,220,220,1)",
+				pointColor : "rgba(220,220,220,1)",
+				pointstrokeColor : "yellow",
+				data : pgData,
+				xPos : [0],
+				title : "Postgres"
+			},
+			{
+				fillColor : "rgba(151,187,205,0.5)",
+				strokeColor : "rgba(151,187,205,1)",
+				pointColor : "rgba(151,187,205,1)",
+				pointstrokeColor : "blue",
+				data : mdbData,
+				xPos : [0],
+				title : "MonetDB"
+			},
+			{
+				fillColor : "rgba(0,187,0,0.5)",
+				strokeColor : "rgba(0,187,0,1)",
+				pointColor : "rgba(0,187,0,1)",
+				pointstrokeColor : "green",
+				data : cData,
+				xPos : [0],
+				title : "C++"
+			}
+		]
+	}
+
+	opt = {
+		animationLeftToRight : false,
+		animationSteps : 5,
+		animationEasing: "linear",
+		canvasBorders : false,
+		legend : true,
+		annotateDisplay : true,
+		graphTitleFontSize: 18, 
+		responsive : true,
+		fmtXLabel : "fmttime hh:mm:ss",
+		animationCount: 1,
+		animationPauseTime : 0,
+		animationBackward: true,
+		xAxisLabel : "Percent Built (%)",
+		yAxisLabel : "Time (sec)"
+	};
+
+	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
+
+}
 socket.on('pgNews', function (msg){
 
 	pgData.push(totalSeconds);
@@ -133,6 +216,15 @@ socket.on('pgNews', function (msg){
 				data : mdbData,
 				xPos : mdbXPos,
 				title : "MonetDB"
+			},
+			{
+				fillColor : "rgba(0,187,0,0.5)",
+				strokeColor : "rgba(0,187,0,1)",
+				pointColor : "rgba(0,187,0,1)",
+				pointstrokeColor : "green",
+				data : cData,
+				xPos : cXPos,
+				title : "C++"
 			}
 		]
 	}
@@ -148,8 +240,8 @@ socket.on('pgNews', function (msg){
 });
 socket.on('pgDone', function (msg){
 
-	$('#pg-time').removeClass('timer');
 	$('#pg-prog').css('width', "100%");
+	pgTimer.stop();
 
 });
 socket.on('mdbNews', function (msg){
@@ -181,6 +273,15 @@ socket.on('mdbNews', function (msg){
 				data : mdbData,
 				xPos : mdbXPos,
 				title : "MonetDB"
+			},
+			{
+				fillColor : "rgba(0,187,0,0.5)",
+				strokeColor : "rgba(0,187,0,1)",
+				pointColor : "rgba(0,187,0,1)",
+				pointstrokeColor : "green",
+				data : cData,
+				xPos : cXPos,
+				title : "C++"
 			}
 		]
 	}
@@ -195,8 +296,64 @@ socket.on('mdbNews', function (msg){
 });
 socket.on('mdbDone', function (msg){
 
-	$('#mdb-time').removeClass('timer');
+	mdbTimer.stop();
 	$('#mdb-prog').css('width', "100%");
+
+});
+socket.on('cNews', function (msg){
+
+	cData.push(totalSeconds);
+	cXPos.push(String(msg['percent']));
+	$('#c++-prog').css('width', String(msg['percent']) + "%");
+
+	//console.log("monet", mdbXPos);
+	mydata = {
+		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+		xBegin : 0,
+		xEnd : 100,
+		datasets : [
+			{
+				fillColor : "rgba(220,220,220,0.5)",
+				strokeColor : "rgba(220,220,220,1)",
+				pointColor : "rgba(220,220,220,1)",
+				pointstrokeColor : "yellow",
+				data : pgData,
+				xPos : pgXPos,
+				title : "Postgres"
+			},
+			{
+				fillColor : "rgba(151,187,205,0.5)",
+				strokeColor : "rgba(151,187,205,1)",
+				pointColor : "rgba(151,187,205,1)",
+				pointstrokeColor : "blue",
+				data : mdbData,
+				xPos : mdbXPos,
+				title : "MonetDB"
+			},
+			{
+				fillColor : "rgba(0,187,0,0.5)",
+				strokeColor : "rgba(0,187,0,1)",
+				pointColor : "rgba(0,187,0,1)",
+				pointstrokeColor : "green",
+				data : cData,
+				xPos : cXPos,
+				title : "C++"
+			}
+		]
+	}
+	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
+	console.log("Updated", cData);
+	console.log(msg);
+
+	mdbCache+=parseInt(msg['cache']);
+
+	$('#c++-cache').html(mdbCache);
+
+});
+socket.on('cDone', function (msg){
+
+	cTimer.stop();
+	$('#c++-prog').css('width', "100%");
 
 });
 function enterDemo(){
@@ -205,7 +362,7 @@ function enterDemo(){
 	$('#test-container').remove();
 	$('#demo-container').show();
 
-	rows = 100, cols = 6, chunks = 10;
+	rows = 100, cols = 6, chunks = 5;
 
 	//PRE-CREATE CHUNKS (with levels) BUT DONT SHOW
 
@@ -224,30 +381,10 @@ function enterDemo(){
 
 	socket.emit('interStart', [rows, cols, chunks]);
 
-	var timer = document.getElementsByClassName('timer'),
-	seconds = 0, minutes = 0, hours = 0, t;
+	//TIMER
+	interTimer = new Stopwatch(document.getElementById('inter-time'));
 
-	function add() {
-	    seconds++;
-	    totalSeconds++;
-	    if (seconds >= 60) {
-	        seconds = 0;
-	        minutes++;
-	        if (minutes >= 60) {
-	            minutes = 0;
-	            hours++;
-	        }
-	    }
-	    
-	    for (i = 0, len = timer.length; i < len; ++i) {
-	    	timer[i].textContent = (hours ? (hours > 9 ? hours : "0" + hours) : "00") + ":" + (minutes ? (minutes > 9 ? minutes : "0" + minutes) : "00") + ":" + (seconds > 9 ? seconds : "0" + seconds);
-	    }
-	    timeIt();
-	}
-	function timeIt() {
-	    t = setTimeout(add, 1000);
-	}
-	timeIt();
+	interTimer.start();
 
 	data = [0];
 	xPos = [0];
@@ -512,3 +649,68 @@ function click(d) {
   update(d);
 }
 
+var Stopwatch = function(elem, options) {
+
+  var timer       = createTimer(),
+      offset,
+      clock,
+      interval;
+
+  // default options
+  options = options || {};
+  options.delay = options.delay || 1;
+
+  // append elements     
+  elem.appendChild(timer);
+
+  // initialize
+  reset();
+
+  // private functions
+  function createTimer() {
+    return document.createElement("span");
+  }
+
+  function start() {
+    if (!interval) {
+      offset   = Date.now();
+      interval = setInterval(update, options.delay);
+    }
+  }
+
+  function stop() {
+    if (interval) {
+      clearInterval(interval);
+      interval = null;
+    }
+  }
+
+  function reset() {
+    clock = 0;
+    render();
+  }
+
+  function update() {
+  	d = delta()
+    clock += d;
+    totalSeconds += d;
+    render();
+  }
+
+  function render() {
+    timer.innerHTML = clock/1000; 
+  }
+
+  function delta() {
+    var now = Date.now(),
+        d   = now - offset;
+
+    offset = now;
+    return d;
+  }
+
+  // public API
+  this.start  = start;
+  this.stop   = stop;
+  this.reset  = reset;
+};

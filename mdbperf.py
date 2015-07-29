@@ -230,20 +230,23 @@ def demo():
 	numCols = int(sys.argv[2])
 	numChunks = int(sys.argv[3])
 
+	name = "demop" + str(random.randint(0, 12412099999999989))
+
+
 	conn = mdb.connect(username="monetdb", password="monetdb", database="test")
 	cur = conn.cursor()
 
-	createTable(cur, conn, "demop2", numCols)
-	insertRandData(cur, conn, "demop2", numRows)
+	createTable(cur, conn, name, numCols)
+	insertRandData(cur, conn, name, numRows)
 	conn.commit()
 
-	createDCTableSetup("demop2", numCols, numChunks, numCols, numRows)
+	createDCTableSetup(name, numCols, numChunks, numCols, numRows)
 	#print("setup done")
-	nodeCount = createDCTableLevel1("demop2", numCols, numChunks, numCols, numRows)
+	nodeCount = createDCTableLevel1(name, numCols, numChunks, numCols, numRows)
 	#print("level 1 made")
-	nodeCount = createDCTableLevel2("demop2", numCols, numChunks, numCols, numRows, nodeCount)
+	nodeCount = createDCTableLevel2(name, numCols, numChunks, numCols, numRows, nodeCount)
 	#print("level 2 made")
-	createDCTableLeveln("demop2", numCols, numChunks, numCols, numRows, nodeCount)
+	createDCTableLeveln(name, numCols, numChunks, numCols, numRows, nodeCount)
 	#print("done")
 
 	conn.commit()
@@ -253,8 +256,8 @@ def demo():
 	print("done")
 	#print(time.time() - startTime)
 
-	cur.execute("DROP TABLE demop2")
-	cur.execute("DROP TABLE dc_demop2")
+	cur.execute("DROP TABLE " + name)
+	cur.execute("DROP TABLE dc_" + name)
 	conn.commit()
 
 def exp():
