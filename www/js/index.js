@@ -5,7 +5,7 @@ var data, pgData, mdbData, cData;
 var xPos, pgXPos, mdbXPos, cXPos;
 var totalSeconds = 0;
 var cols, rows, chunks;
-var counter = 0, pgcount = 0, mdbcount=0, ccount=0;
+var counter = 0;
 var pgCache = 0, cCache = 0, mdbCache = 0;
 var treeData = [{name:"null"}];
 var tree, root, svg, iTree, duration, diagonal; //d3tree variables
@@ -107,10 +107,9 @@ function startClick(){
 socket.on('pgNews', function (msg){
 
 	pgData.push(totalSeconds);
-	pgcount++;
-	pgXPos.push(100*(pgcount/chunks*cols));
-	$('#pg-prog').css('width', String(100*(pgcount/chunks*cols)) + "%");
-	console.log($('#pg-prog').css('width'));
+
+	pgXPos.push(String(msg['percent']));
+	$('#pg-prog').css('width', String(msg['percent']) + "%");
 	//console.log("pg", pgXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -150,15 +149,15 @@ socket.on('pgNews', function (msg){
 socket.on('pgDone', function (msg){
 
 	$('#pg-time').removeClass('timer');
+	$('#pg-prog').css('width', "100%");
 
 });
 socket.on('mdbNews', function (msg){
 
 	mdbData.push(totalSeconds);
-	mdbcount++;
-	mdbXPos.push(100*(mdbcount/chunks*cols));
-	$('#mdb-prog').css('width', String(100*(mdbcount/chunks*cols)) + "%");
-	console.log($('#mdb-prog').css('width'));
+	mdbXPos.push(String(msg['percent']));
+	$('#mdb-prog').css('width', String(msg['percent']) + "%");
+
 	//console.log("monet", mdbXPos);
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -190,7 +189,6 @@ socket.on('mdbNews', function (msg){
 	//console.log(msg);
 
 	mdbCache+=parseInt(msg['cache']);
-	//console.log(mdbCache);
 
 	$('#mdb-cache').html(mdbCache);
 
@@ -198,6 +196,7 @@ socket.on('mdbNews', function (msg){
 socket.on('mdbDone', function (msg){
 
 	$('#mdb-time').removeClass('timer');
+	$('#mdb-prog').css('width', "100%");
 
 });
 function enterDemo(){
@@ -364,12 +363,6 @@ socket.on('interNews', function (msg){
 		{	lightness: 0,colorStyle: 'greentored' }
 	);
 	
-
-	/*interCache+=parseInt(msg['cache']);
-	console.log(interCache);
-
-	$('#inter-cache').html(interCache);*/
-
 });
 
 function nodeClick(val, list){

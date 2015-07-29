@@ -17,6 +17,9 @@ def checkLevel2(x):
 	'''
 	return bin(x).count('1') == 2
 
+def findPercent(nodeCount, sizeDC):
+	return 100*(nodeCount/sizeDC)
+
 def createTable(cur, conn, name, numCol, b=0):
 
 	if(b == 1):
@@ -55,7 +58,9 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 	cur.execute("SELECT column_name from information_schema.columns where table_name='" + table + "'")
 	colList = [x[0] for x in cur.fetchall()]
 
-	maxRows = (2**numCols - 1)*numChunks
+	sizeDC = numChunks * (2**numCols - 1)
+	nodeCount = 0
+	prevPercent = 0
 	sizeChunk = math.ceil(numRows/numChunks)
 
 	ID = 1
@@ -82,14 +87,18 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1, col2, col3, col4, col5) VALUES (%s, %s, %s, %s, %s, %s)",
 				[ID, avg, std,var,med,mod])
 
-			#print(str(random.randint(23,28123)) + "|" + str(1) + "|" + str(c + 1) + "|" + str([float(avg),float(std),float(var),float(med),float(mod)]) + "|" + str([i]) + "&", flush=True, sep="")
-			print(str(random.randint(23,28123)) + "|" + str(c + 1) + "&", flush=True, sep="")
-			sys.stdout.flush()
-			#cache, level, chunk, stat, childs
+			nodeCount+=1
+
+			p = findPercent(nodeCount, sizeDC)
+			if(p - prevPercent >= 5):
+				print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
+				prevPercent = p
+				sys.stdout.flush()
 
 	conn.commit()
+	return nodeCount
 
-def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
+def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 	
 	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
@@ -97,7 +106,8 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
 	cur.execute("SELECT column_name from information_schema.columns where table_name='" + table + "'")
 	colList = [x[0] for x in cur.fetchall()]
 
-	maxRows = (2**numCols - 1)*numChunks
+	sizeDC = numChunks * (2**numCols - 1)
+	prevPercent = findPercent(nodeCount, sizeDC)
 	sizeChunk = math.ceil(numRows/numChunks)
 
 	for c in range(numChunks):
@@ -114,18 +124,25 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
 				cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 					[idChunkCombine(2**i + 2**j, c, numChunks),corr])
 
-				#print(str(random.randint(23,28123)) + "|" + str(2) + "|" + str(c + 1) + "|" + str(corr) + "|" + str([i,j]) + "&", flush=True, sep="")
-				print(str(random.randint(23,28123)) + "|" + str(c + 1) + "&", flush=True, sep="")
-				sys.stdout.flush()
-				#cache, level, chunk, stat, childs
+				nodeCount+=1
+
+				p = findPercent(nodeCount, sizeDC)
+				if(p - prevPercent >= 5):
+					print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
+					prevPercent = p
+					sys.stdout.flush()
 
 
 	conn.commit()
+	return nodeCount
 
-def createDCTableLeveln(table, levels, numChunks, numCols, numRows):
+def createDCTableLeveln(table, levels, numChunks, numCols, numRows, nodeCount):
 
 	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
+
+	sizeDC = numChunks * (2**numCols - 1)
+	prevPercent = findPercent(nodeCount, sizeDC)
 
 	for c in range(numChunks):
 		for i in range(1, 2**numCols):
@@ -150,9 +167,13 @@ def createDCTableLeveln(table, levels, numChunks, numCols, numRows):
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 				[idChunkCombine(i, c, numChunks), correlation])
 
-			#print(str(random.randint(23,28123)) + "|" + str(len(kids)) + "|" + str(c + 1) + "|" + str(correlation) + "|" + str(kids) + "&", flush=True, sep="")
-			print(str(random.randint(23,28123)) + "|" + str(c + 1) + "&", flush=True, sep="")
-			sys.stdout.flush()
+			nodeCount+=1
+
+			p = findPercent(nodeCount, sizeDC)
+			if(p - prevPercent >= 5):
+				print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
+				prevPercent = p
+				sys.stdout.flush()
 
 	conn.commit()
 
@@ -192,11 +213,11 @@ def demo():
 
 	createDCTableSetup("demop", numCols, numChunks, numCols, numRows)
 	#print("setup done")
-	createDCTableLevel1("demop", numCols, numChunks, numCols, numRows)
+	nodeCount = createDCTableLevel1("demop", numCols, numChunks, numCols, numRows)
 	#print("level 1 made")
-	createDCTableLevel2("demop", numCols, numChunks, numCols, numRows)
+	nodeCount = createDCTableLevel2("demop", numCols, numChunks, numCols, numRows, nodeCount)
 	#print("level 2 made")
-	createDCTableLeveln("demop", numCols, numChunks, numCols, numRows)
+	createDCTableLeveln("demop", numCols, numChunks, numCols, numRows, nodeCount)
 	#print("done")
 
 	conn.commit()

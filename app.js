@@ -38,7 +38,7 @@ io.on('connection', function(socket){
 
                 var temp = String(loop[i]).split('|');
                 //console.log("pg", temp);
-                io.sockets.emit('pgNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
+                io.sockets.emit('pgNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
         });
 
@@ -63,7 +63,7 @@ io.on('connection', function(socket){
 
                 var temp = String(loop[i]).split('|');
                 //console.log("mdb", temp);
-                io.sockets.emit('mdbNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
+                io.sockets.emit('mdbNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
         });
 
@@ -93,8 +93,8 @@ io.on('connection', function(socket){
 
                     //console.log("loop", loop);
                     var temp = loop[i].split('|');
-                    //console.log("inter", {cache: temp[0], level: temp[1], chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
-                    io.sockets.emit('interNews', {cache: temp[0].trim(), level: temp[1].trim(), chunk: temp[2].trim(), stat: temp[3].trim(), childs: temp[4].trim()});
+                    //console.log("inter", {level: temp[0], chunk: temp[1], stat: temp[2], childs: temp[3].trim()});
+                    io.sockets.emit('interNews', {level: temp[0].trim(), chunk: temp[1].trim(), stat: temp[2].trim(), childs: temp[3].trim()});
                 
                 }
             }
