@@ -27,7 +27,7 @@ io.on('connection', function(socket){
             var loop = String(output).split('&');
             //console.log("loop", loop);
 
-            for (var i = loop.length - 1; i >= 0; i--) {
+            for (var i = 0; i < loop.length; i++) {
 
                 if(loop[i].trim() == "done"){
                     io.sockets.emit('pgDone', "done");
@@ -52,7 +52,7 @@ io.on('connection', function(socket){
             var loop = String(output).split('&');
             //console.log("loop", loop);
 
-            for (var i = loop.length - 1; i >= 0; i--) {
+            for (var i = 0; i < loop.length; i++) {
 
                 if(loop[i].trim() == "done"){
                     io.sockets.emit('mdbDone', "done");
@@ -77,14 +77,14 @@ io.on('connection', function(socket){
             var loop = String(output).split('&');
             //console.log("loop", loop);
 
-            for (var i = loop.length - 1; i >= 0; i--) {
+            for (var i = 0; i < loop.length; i++) {
 
                 if(loop[i].indexOf('|') < 0)
                     continue;
 
                 var temp = String(loop[i]).split('|');
                 //console.log("mdb", temp);
-                if(temp[0].trim() == "done"){
+                if(temp[0].trim() == "100"){
                     io.sockets.emit('cDone', "done");
                     console.log("cdone");
                     continue;

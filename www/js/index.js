@@ -21,9 +21,14 @@ function enterTest(){
 }
 function startClick(){
 	
+	$('#pg-time span').remove();
+	$('#mdb-time span').remove();
+	$('#c-time span').remove();
+
 	pgTimer = new Stopwatch(document.getElementById('pg-time'));
 	mdbTimer = new Stopwatch(document.getElementById('mdb-time'));
-	cTimer = new Stopwatch(document.getElementById('c++-time'));
+	console.log("banana");
+	cTimer = new Stopwatch(document.getElementById('c-time'));
 
 	pgTimer.start();
 	mdbTimer.start();
@@ -130,7 +135,7 @@ function resetClick(){
 
 	$('#pg-prog').css('width', "0%");
 	$('#mdb-prog').css('width', "0%");
-	$('#c++-prog').css('width', "0%");
+	$('#c-prog').css('width', "0%");
 
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -304,7 +309,7 @@ socket.on('cNews', function (msg){
 
 	cData.push(totalSeconds);
 	cXPos.push(String(msg['percent']));
-	$('#c++-prog').css('width', String(msg['percent']) + "%");
+	$('#c-prog').css('width', String(msg['percent']) + "%");
 
 	//console.log("monet", mdbXPos);
 	mydata = {
@@ -343,17 +348,18 @@ socket.on('cNews', function (msg){
 	}
 	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
 	console.log("Updated", cData);
-	console.log(msg);
+	console.log("c", msg);
 
 	mdbCache+=parseInt(msg['cache']);
 
-	$('#c++-cache').html(mdbCache);
+	$('#c-cache').html(mdbCache);
+	console.log(mdbCache);
 
 });
 socket.on('cDone', function (msg){
 
 	cTimer.stop();
-	$('#c++-prog').css('width', "100%");
+	$('#c-prog').css('width', "100%");
 
 });
 function enterDemo(){
@@ -694,6 +700,7 @@ var Stopwatch = function(elem, options) {
   	d = delta()
     clock += d;
     totalSeconds += d;
+    totalSeconds /= 1000
     render();
   }
 

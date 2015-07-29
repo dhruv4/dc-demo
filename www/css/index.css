@@ -86,15 +86,15 @@ nav, .navbarfixed, .nav-wrapper {
 }
 
 #seas-link:hover{
-    background-position-y: -77px;
+    background-position: 0 -77px;
 }
 
 #harvard-link:hover{
-    background-position-y: -77px;
+    background-position: 0 -77px;
 }
 
 #daslab-link:hover{
-    background-position-y: -79px;
+    background-position: 0 -79px;
 }
 
 @media(min-width:992px) {
