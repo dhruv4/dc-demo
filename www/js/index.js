@@ -11,9 +11,17 @@ var pgCache = 0, cCache = 0, mdbCache = 0;
 var treeData = [{name:"null"}];
 var tree, root, svg, iTree, duration, diagonal; //d3tree variables
 
+$(document).ready(function(){
+	$('.parallax').parallax();
+});
+ $(document).ready(function(){
+    $('.scrollspy').scrollSpy();
+  });
+
+
 function enterTest(){
 
-	$('#splash-container').remove();
+	$('#splash-page').remove();
 	$('#test-container').show();
 	$('#demo-container').remove();
 	$('.thumb').addClass('blue');
@@ -364,7 +372,7 @@ socket.on('cDone', function (msg){
 });
 function enterDemo(){
 
-	$('#splash-container').remove();
+	$('#splash-page').remove();
 	$('#test-container').remove();
 	$('#demo-container').show();
 

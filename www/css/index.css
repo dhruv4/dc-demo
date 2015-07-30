@@ -7,10 +7,52 @@
 main {
   flex: 1 0 auto;
 }
-
 .nav-wrapper img 	{
 	margin-top: 5px;
 	height: 45px;
+}
+nav, .navbarfixed, .nav-wrapper, header {
+  height: 50px;
+  line-height: 50px;
+  font-family: serif;
+}
+.parallax-container {
+  height: 95vh;
+}
+#head-cont {
+  height: 95vh;
+}
+#info-cont {
+  height: 95vh;
+}
+#demo-cont {
+  /*height: 95vh;*/
+}
+#people-cont {
+  height: 95vh;
+}
+#people-cont a {
+  color: black;
+  text-decoration: none;
+}
+#people-cont a:hover {
+  color: white;
+  text-decoration: none;
+}
+.table-of-contents li {
+  height: 50px;
+}
+.table-of-contents li a {
+  color: #CFC !important;
+}
+.table-of-contents li a:hover {
+  color: white !important;
+}
+.table-of-contents li a.active {
+  border-left: 2px solid #CFC !important;
+}
+.table-of-contents li a:hover {
+  border-left: 1px solid #CFC !important;
 }
 
 /*D3 Styles*/
@@ -53,11 +95,10 @@ tr {
 .card.z-depth-0 {
   box-shadow: none !important;
 }
-nav, .navbarfixed, .nav-wrapper {
-  height: 50px;
-  line-height: 50px;
-}
 /*footer*/
+footer.page-footer {
+  margin-top: 0;
+}
 #seas-link, #harvard-link, #daslab-link{
     background-repeat: no-repeat;
     display:block;

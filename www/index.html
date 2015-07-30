@@ -20,32 +20,86 @@
 		<header>
 			<div class="navbar-fixed">
 				<nav>
-					<div class="nav-wrapper blue">
-						<a href="/" class="brand-logo center white-text">Data Canopy</a>
+					<div class="nav-wrapper cyan darken-4">
+						<a href="/" class="brand-logo center light-green-text text-accent-1">Data Canopy</a>
+						<a href="//daslab.seas.harvard.edu" target="_blank" class="brand-logo left"><img src="media/daslab.png"></a>
+						<ul id="nav-mobile" class="right hide-on-med-and-down table-of-contents">
+					        <li><a href="#info-cont">Information</a></li>
+					        <li><a href="#demo-cont">Demo</a></li>
+					        <li><a href="#people-cont">People</a></li>
+					    </ul>
 					</div>
 				</nav>
 			</div>
 		</header>
 		<main>
-			<div id="splash-container" class="container" style="display: block;">
-				<div class="row">
-					<div class="card col s5">
-						<div class="card-content">
-							<div class="row">
-								<span class="col s12 card-title black-text">
-									Performance Comparison
-								</span>
-								<button class="col s6 offset-s3 waves-effect waves-light btn blue" type="button" id="join-list" onclick="enterTest()">Enter</button>
+			<div id="splash-page" style="display: block;">
+				<div class="parallax-container">
+					<div class="parallax">
+						<img src="media/parallax2.jpg">
+						<h2 class="header">banana</h2>
+					</div>
+				</div>
+				<div id="head-cont" class="section blue">
+					<div class="container">
+						<h2 class="header">Data Canopy</h2>
+					</div>
+				</div>
+				<div id="info-cont" class="section green scrollspy">
+					<div class="container">
+						<h2 class="header">Information</h2>
+					</div>
+				</div>
+				<div id="demo-cont" class="section white scrollspy">
+					<div class="container">
+						<div class="row">
+							<div class="card col s5">
+								<div class="card-content">
+									<div class="row">
+										<span class="col s12 card-title black-text">
+											Performance Comparison
+										</span>
+										<button class="col s6 offset-s3 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterTest()">Enter</button>
+									</div>
+								</div>
+							</div>
+							<div class="card col offset-s2 s5">
+								<div class="card-content">
+									<div class="row">
+										<span class="col s12 card-title black-text">
+											Interaction Demo
+										</span>
+										<button class="col s6 offset-s3 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterDemo()">Enter</button>
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>
-					<div class="card col offset-s2 s5">
-						<div class="card-content">
-							<div class="row">
-								<span class="col s12 card-title black-text">
-									Interaction Demo
-								</span>
-								<button class="col s6 offset-s3 waves-effect waves-light btn blue" type="button" id="join-list" onclick="enterDemo()">Enter</button>
+				</div>
+				<div id="people-cont" class="section blue-grey lighten-4 scrollspy">
+					<div class="container">
+						<h2 class="header">People</h2>
+						<div class="row">
+							<div class="col s12 m4 center">
+								<a href="//daslab.seas.harvard.edu/people/awasay/" target="_blank">
+									<img class="circle responsive-img" src="media/wasay.jpg">
+									<h5>Abdul Wasay<h5>
+									<h6>PHD Researcher</h6>
+								</a>
+							</div>
+							<div class="col s12 m4 center">
+								<a href="//www.dhruvgupta.me" target="_blank">
+									<img class="circle responsive-img" src="media/dhruv.jpg">
+									<h5>Dhruv Gupta<h5>
+									<h6>High School Intern</h6>
+								</a>
+							</div>
+							<div class="col s12 m4 center">
+								<a href="//stratos.seas.harvard.edu/" target="_blank">
+									<img class="circle responsive-img" src="media/stratos.jpg">
+									<h5>Stratos Idreos<h5>
+									<h6>PHD Researcher</h6>
+								</a>
 							</div>
 						</div>
 					</div>
@@ -73,7 +127,7 @@
 								</div>
 							</form>
 							<div class="row">
-								<button id="start-btn" onclick="startClick()" class="col s4 offset-s4 waves-effect waves-light btn blue">Start</button>
+								<button id="start-btn" onclick="startClick()" class="col s4 offset-s4 waves-effect waves-light btn cyan darken-4">Start</button>
 							</div>
 						</div>
 					</div>
@@ -82,13 +136,14 @@
 					<div class="card col s4 z-depth-0">
 						<div class="card-content">
 							<span class="card-title black-text">MonetDB</span>
-							<div class="progress blue lighten-4">
-								<div id="mdb-prog" class="determinate blue" style="width: 0%"></div>
+							<div class="progress cyan darken-4 lighten-4">
+								<div id="mdb-prog" class="determinate cyan darken-4" style="width: 0%"></div>
 							</div>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
 										<span id="mdb-time" class="card-title black-text stopwatch">
+											<span>0</span>
 										</span>
 										<p>Time</p>
 									</div>
@@ -107,13 +162,14 @@
 					<div class="card col s4 z-depth-0">
 						<div class="card-content">
 							<span class="card-title black-text">C++</span>
-							<div class="progress blue lighten-4">
-								<div id="c-prog" class="determinate blue" style="width: 0%"></div>
+							<div class="progress cyan darken-4 lighten-4">
+								<div id="c-prog" class="determinate cyan darken-4" style="width: 0%"></div>
 							</div>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
 										<span id="c-time" class="card-title black-text stopwatch">
+											<span>0</span>
 										</span>
 										<p>Time</p>
 									</div>
@@ -132,13 +188,14 @@
 					<div class="card col s4 z-depth-0">
 						<div class="card-content">
 							<span class="card-title black-text">Postgres</span>
-							<div class="progress blue lighten-4">
-								<div id="pg-prog" class="determinate blue" style="width: 0%"></div>
+							<div class="progress cyan darken-4 lighten-4">
+								<div id="pg-prog" class="determinate cyan darken-4" style="width: 0%"></div>
 							</div>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
 										<span id="pg-time" class="card-title black-text stopwatch">
+											<span>0</span>
 										</span>
 										<p>Time</p>
 									</div>
@@ -185,7 +242,7 @@
 						</ul>
 						<div class="col s12 m4 offset-m5 valign-wrapper" style="height: 100%;">
 							<div class="preloader-wrapper big active valign">
-								<div class="spinner-layer spinner-blue-only">
+								<div class="spinner-layer spinner-cyan darken-4-only">
 									<div class="circle-clipper left">
 										<div class="circle"></div>
 									</div><div class="gap-patch">
@@ -234,7 +291,7 @@
 			</div>
 
 		</main>
-		<footer class="page-footer blue">
+		<footer class="page-footer cyan darken-4">
 			<div class="row">
 				<div class="col s12 m4">
 					<a id="seas-link" href="http://seas.harvard.edu" target="_blank" title="Harvard SEAS"></a>
