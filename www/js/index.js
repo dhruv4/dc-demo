@@ -14,17 +14,22 @@ var tree, root, svg, iTree, duration, diagonal; //d3tree variables
 $(document).ready(function(){
 	$('.parallax').parallax();
 });
- $(document).ready(function(){
-    $('.scrollspy').scrollSpy();
-  });
-
+$(document).ready(function(){
+	$('.scrollspy').scrollSpy();
+});
+function scrollHead() {
+	$('html, body').animate({
+        scrollTop: $("#head-cont").offset().top - 30
+    }, 1000);
+}
 
 function enterTest(){
 
 	$('#splash-page').remove();
 	$('#test-container').show();
 	$('#demo-container').remove();
-	$('.thumb').addClass('blue');
+	$('#nav-mobile').remove();
+	$('.thumb').addClass('cyan darken-4');
 
 }
 function startClick(){
@@ -47,6 +52,7 @@ function startClick(){
 	//Turn into reset
 
 	$('#perf-graph-row').show();
+	$('#perf-data').show();
 
 	$("input").prop('disabled', true);
 
@@ -374,6 +380,7 @@ function enterDemo(){
 
 	$('#splash-page').remove();
 	$('#test-container').remove();
+	$('#nav-mobile').remove();
 	$('#demo-container').show();
 
 	rows = 100, cols = 6, chunks = 5;
@@ -400,7 +407,7 @@ function enterDemo(){
 
 	interTimer.start();
 
-	data = [0];
+	/*data = [0];
 	xPos = [0];
 	mydata = {
 		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -436,7 +443,7 @@ function enterDemo(){
 		yAxisLabel : "Time (sec)"
 	};
 
-	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
+	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);*/
 
 	// ************** Generate the d3tree diagram  *****************
 	var margin = {top: 40, right: 50, bottom: 20, left: 50},
@@ -467,13 +474,25 @@ function enterDemo(){
 
 }
 
+socket.on('interDone', function (msg){
+	interTimer.stop();
+	$('#inter-prog').css('width', "100%");
+});
+
+
 socket.on('interNews', function (msg){
 
 	$(".preloader-wrapper").hide();
 	$("#inter-accordion").show();
 
-	counter++;
-	data.push(totalSeconds);
+	percent = msg[0];
+
+	js = msg[1];
+
+	$('#inter-prog').css('width', String(percent) + "%");
+
+	//counter++;
+	/*data.push(totalSeconds);
 	xPos.push(100*((counter)/(cols*chunks)));
 	//console.log("inter", xPos);
 	mydata = {
@@ -492,19 +511,23 @@ socket.on('interNews', function (msg){
 			}
 		]
 	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);
+	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);*/
 	
 	//console.log("Updated", data);
 	//console.log(msg);
 
 	//console.log('lichunk' + msg['chunk']);
 
-	$('#lichunk' + msg['chunk']).show();
+	for (var i = js.length - 1; i >= 0; i--) {
+		console.log(js[i]);
+		console.log(js[i]['childs']);
+		$('#lichunk' + js[i]['chunk']).show();
 
-	if(parseInt(msg['level']) == 1)
-		$('#chunk' + msg['chunk'] + ' #trlevel' + msg['level']).append("<td><button class='nodeone btn-floating btn-large waves-effect waves-light' value=" + msg['stat'] + " onclick='nodeClick(" + msg['stat'] + "," + msg['childs'] + ")'><i class='material-icons'>data_usage</i></button></td>");
-	else
-		$('#chunk' + msg['chunk'] + ' #trlevel' + msg['level']).append("<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + msg['stat'] + " onclick='nodeClick(" + msg['stat'] + "," + msg['childs'] + ")'><i class='material-icons'>data_usage</i></button></td>");
+		if(parseInt(js[i]['level']) == 1)
+			$('#chunk' + js[i]['chunk'] + ' #trlevel' + js[i]['level']).append("<td><button class='nodeone btn-floating btn-large waves-effect waves-light' value=" + js[i]['stat'] + " onclick='nodeClick([" + js[i]['stat'] + "],[" + js[i]['childs'] + "])'><i class='material-icons'>data_usage</i></button></td>");
+		else
+			$('#chunk' + js[i]['chunk'] + ' #trlevel' + js[i]['level']).append("<td><button class='node btn-floating btn-large waves-effect waves-light' value=" + js[i]['stat'] + " onclick='nodeClick(" + js[i]['stat'] + ",[" + js[i]['childs'] + "])'><i class='material-icons'>data_usage</i></button></td>");
+	}
 
 	$('.collapsible').collapsible();
 

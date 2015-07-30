@@ -1,8 +1,8 @@
 //app2.js
+var pyshell = require('python-shell');
 var express = require('express');
 var app = express();
-//var spawn = require('child_process').spawn;
-var pyshell = require('python-shell');
+var spawn = require('child_process').spawn;
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
@@ -14,20 +14,22 @@ app.get('/', function(req, res){
 
 io.on('connection', function(socket){
 
+    var pgPerf, mdbPerf, cPerf;
+
     console.log('a user connected');
     socket.on('start', function (params) {
         console.log('client sent ' + params);
 
         //var pgPerf = spawn('python3', ["pgDummy.py", params[0], params[1], params[2]]);
-        var pgPerf = new pyshell("pgperf.py", {scriptPath: __dirname, args: [params[0], params[1], params[2]]});
+        var pgPerf = new pyshell("pgperf.py", { pythonPath: '~/usr/bin/python3', scriptPath: __dirname, args: [params[0], params[1], params[2]]});
         
-        pgPerf.on('message', function (output) { 
+        pgPerf.on('message', function (output) {
             
 
             var loop = String(output).split('&');
             //console.log("loop", loop);
 
-            for (var i = loop.length - 1; i >= 0; i--) {
+            for (var i = 0; i < loop.length; i++) {
 
                 if(loop[i].trim() == "done"){
                     io.sockets.emit('pgDone', "done");
@@ -40,20 +42,19 @@ io.on('connection', function(socket){
 
                 var temp = String(loop[i]).split('|');
                 //console.log("pg", temp);
-                io.sockets.emit('pgNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
+                io.sockets.emit('pgNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
         });
 
-        var mdbPerf = new pyshell("mdbperf.py", {scriptPath: __dirname, args: [params[0], params[1], params[2]]});
+        var mdbPerf = new pyshell("mdbperf.py", { pythonPath: '~/usr/bin/python3', scriptPath: __dirname, args: [params[0], params[1], params[2]]});
         
         mdbPerf.on('message', function (output) { 
             
-            console.log(output);
 
             var loop = String(output).split('&');
             //console.log("loop", loop);
 
-            for (var i = loop.length - 1; i >= 0; i--) {
+            for (var i = 0; i < loop.length; i++) {
 
                 if(loop[i].trim() == "done"){
                     io.sockets.emit('mdbDone', "done");
@@ -66,8 +67,43 @@ io.on('connection', function(socket){
 
                 var temp = String(loop[i]).split('|');
                 //console.log("mdb", temp);
-                io.sockets.emit('mdbNews', {cache: temp[0].trim(), chunk: temp[1].trim()});
+                io.sockets.emit('mdbNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
+        });
+
+        cPerf = spawn('./demo_performance', [params[1], params[0], params[0]/params[2], 1]);
+        
+        cPerf.stdout.on('data', function (output) { 
+            
+            
+            var loop = String(output).split('&');
+            //console.log("loop", loop);
+
+            for (var i = 0; i < loop.length; i++) {
+
+                if(loop[i].indexOf('|') < 0)
+                    continue;
+
+                var temp = String(loop[i]).split('|');
+                //console.log("mdb", temp);
+                if(temp[0].trim() == "100"){
+                    io.sockets.emit('cDone', "done");
+                    console.log("cdone");
+                    continue;
+                }
+
+                io.sockets.emit('cNews', {percent: temp[0].trim(), cache: temp[1].trim()});
+            }
+
+        });
+
+
+        socket.on('reset', function () {
+
+            pgPerf.kill();
+            mdbPerf.kill();
+            cPerf.kill();
+
         });
 
     });
@@ -77,11 +113,9 @@ io.on('connection', function(socket){
         console.log("interaction started");
 
         console.log(params);
-        var interDem = new pyshell("pgdc.py", {scriptPath: __dirname, args: [params[0], params[1], params[2]]});
+        var interDem = new pyshell("pgdc.py", {pythonPath: '~/usr/bin/python3', scriptPath: __dirname, args: [params[0], params[1], params[2]]});
         
         interDem.on('message', function (output) { 
-
-        	console.log(output);
 
             if(String(output).trim() == "done"){
                 io.sockets.emit('interDone', "done");
@@ -89,18 +123,22 @@ io.on('connection', function(socket){
             } else {
                 
                 //SPLIT OUTPUT BY '\n' THEN LOOP THROUGH
-                //console.log(String(output));
+                //console.log("output", String(output));
                 var loop = String(output).split('&');
 
                 for (var i = loop.length - 1; i >= 0; i--) {
 
-                    if(loop[i].indexOf('|') < 0)
+                    if(loop[i].indexOf('{') < 0)
                         continue;
 
-                    //console.log("loop", loop);
-                    var temp = loop[i].split('|');
-                    //console.log("inter", {cache: temp[0], level: temp[1], chunk: temp[2], stat: temp[3], childs: temp[4].trim()});
-                    io.sockets.emit('interNews', {cache: temp[0].trim(), level: temp[1].trim(), chunk: temp[2].trim(), stat: temp[3].trim(), childs: temp[4].trim()});
+                    console.log("loop", loop[i]);
+
+                    arr = loop[i].split("|");
+
+                    arr[1] = JSON.parse(arr[1]);
+
+                    console.log("inter", arr);
+                    io.sockets.emit('interNews', arr);
                 
                 }
             }
@@ -114,11 +152,3 @@ io.on('connection', function(socket){
 http.listen(8000, function(){
     console.log('listening on *:8000');
 });
-
-
-
-
-
-
-
-

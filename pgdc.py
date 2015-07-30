@@ -2,6 +2,7 @@
 import sys, random, math, itertools
 import psycopg2 as pg
 import time
+import simplejson as json
 from numpy import *
 
 def checkLevel1(x):
@@ -16,6 +17,9 @@ def checkLevel2(x):
 	return (x == 2)
 	'''
 	return bin(x).count('1') == 2
+
+def findPercent(nodeCount, sizeDC):
+	return 100*(nodeCount/sizeDC)
 
 def createTable(cur, conn, name, numCol, b=0):
 
@@ -55,8 +59,12 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 	cur.execute("SELECT column_name from information_schema.columns where table_name='" + table + "'")
 	colList = [x[0] for x in cur.fetchall()]
 
-	maxRows = (2**numCols - 1)*numChunks
+	sizeDC = numChunks * (2**numCols - 1)
+	nodeCount = 0
+	prevPercent = 0
 	sizeChunk = math.ceil(numRows/numChunks)
+
+	dct = []
 
 	ID = 1
 	for c in range(numChunks):
@@ -82,13 +90,30 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1, col2, col3, col4, col5) VALUES (%s, %s, %s, %s, %s, %s)",
 				[ID, avg, std,var,med,mod])
 
-			print(str(1) + "|" + str(c + 1) + "|" + str([float(avg),float(std),float(var),float(med),float(mod)]) + "|" + str([i]) + "&", sep="")
-			sys.stdout.flush()
+
+			#print(str(1) + "|" + str(c + 1) + "|" + str([float(avg),float(std),float(var),float(med),float(mod)]) + "|" + str([i]) + "&", sep="")
+			#sys.stdout.flush()
 			#cache, level, chunk, stat, childs
+			dct.append({"level": 1, "chunk": c+1, "stat": [avg, std,var,med,mod], "childs": [i] })
+
+			nodeCount+=1
+
+			p = findPercent(nodeCount, sizeDC)
+			if(p - prevPercent >= 5):
+				print(str(p) + "|" + json.dumps(dct) + "&", flush=True, sep="")
+				prevPercent = p
+				sys.stdout.flush()
+				dct = []
+
+	if(len(dct) > 0):
+		print(str(findPercent(nodeCount, sizeDC)) + "|" + json.dumps(dct) + "&", flush=True, sep="")
+		sys.stdout.flush()
+		dct = []
 
 	conn.commit()
+	return nodeCount
 
-def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
+def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 	
 	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
@@ -96,8 +121,12 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
 	cur.execute("SELECT column_name from information_schema.columns where table_name='" + table + "'")
 	colList = [x[0] for x in cur.fetchall()]
 
-	maxRows = (2**numCols - 1)*numChunks
+	sizeDC = numChunks * (2**numCols - 1)
+	nodeCount = 0
+	prevPercent = 0
 	sizeChunk = math.ceil(numRows/numChunks)
+
+	dct = []
 
 	for c in range(numChunks):
 		for i in range(numCols - 1):
@@ -113,17 +142,41 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows):
 				cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 					[idChunkCombine(2**i + 2**j, c, numChunks),corr])
 
-				print(str(2) + "|" + str(c + 1) + "|" + str(corr) + "|" + str([i,j]) + "&", sep="")
-				sys.stdout.flush()
-				#cache, level, chunk, stat, childs
 
+				#print(str(2) + "|" + str(c + 1) + "|" + str(corr) + "|" + str([i,j]) + "&", sep="")
+				#sys.stdout.flush()
+				#cache, level, chunk, stat, childs
+				
+				dct.append({"level": 2, "chunk": c+1, "stat": corr, "childs": [i, j] })
+			
+				nodeCount+=1
+
+				p = findPercent(nodeCount, sizeDC)
+				if(p - prevPercent >= 5):
+					print(str(p) + "|" + json.dumps(dct) + "&", flush=True, sep="")
+					prevPercent = p
+					sys.stdout.flush()
+					dct = []
+
+
+	if(len(dct) > 0):
+		print(str(findPercent(nodeCount, sizeDC)) + "|" + json.dumps(dct) + "&", flush=True, sep="")
+		sys.stdout.flush()
+		dct = []
 
 	conn.commit()
+	return nodeCount
 
-def createDCTableLeveln(table, levels, numChunks, numCols, numRows):
+def createDCTableLeveln(table, levels, numChunks, numCols, numRows, nodeCount):
 
 	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
+
+	sizeDC = numChunks * (2**numCols - 1)
+	nodeCount = 0
+	prevPercent = 0
+
+	dct = []
 
 	for c in range(numChunks):
 		for i in range(1, 2**numCols):
@@ -148,10 +201,29 @@ def createDCTableLeveln(table, levels, numChunks, numCols, numRows):
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 				[idChunkCombine(i, c, numChunks), correlation])
 
-			print(str(len(kids)) + "|" + str(c + 1) + "|" + str(correlation) + "|" + str(kids) + "&", sep="")
-			sys.stdout.flush()
+			#print(str(len(kids)) + "|" + str(c + 1) + "|" + str(correlation) + "|" + str(kids) + "&", sep="")
+			#sys.stdout.flush()
+			dct.append({"level": len(kids), "chunk": c+1, "stat": correlation, "childs": kids })
+			
+			nodeCount+=1
+
+			p = findPercent(nodeCount, sizeDC)
+			if(p - prevPercent >= 5):
+				print(str(p) +"|" + json.dumps(dct) + "&", flush=True, sep="")
+				prevPercent = p
+				sys.stdout.flush()
+				dct = []
+
+	if(len(dct) > 0):
+		print(str(findPercent(nodeCount, sizeDC)) + "|" + json.dumps(dct) + "&", flush=True, sep="")
+		sys.stdout.flush()
+		dct = []
 
 	conn.commit()
+	return nodeCount
+
+#print(str(len(kids)) + "|" + str(c + 1) + "|" + str(correlation) + "|" + str(kids) + "&", sep="")
+
 
 def insertRandData(cur, conn, table, length):
 
@@ -191,11 +263,11 @@ def demo():
 
 	createDCTableSetup("demoi", numCols, numChunks, numCols, numRows)
 	#print("setup done")
-	createDCTableLevel1("demoi", numCols, numChunks, numCols, numRows)
+	nodeCount = createDCTableLevel1("demoi", numCols, numChunks, numCols, numRows)
 	#print("level 1 made")
-	createDCTableLevel2("demoi", numCols, numChunks, numCols, numRows)
+	nodeCount = createDCTableLevel2("demoi", numCols, numChunks, numCols, numRows, nodeCount)
 	#print("level 2 made")
-	createDCTableLeveln("demo", numCols, numChunks, numCols, numRows)
+	createDCTableLeveln("demoi", numCols, numChunks, numCols, numRows, nodeCount)
 	#print("done")
 
 	conn.commit()
@@ -204,6 +276,11 @@ def demo():
 
 	print("done")
 	#print(time.time() - startTime)
+	'''
+	cur.execute("DROP TABLE " + name)
+	cur.execute("DROP TABLE dc_" + name)
+	conn.commit()
+	'''
 
 def exp():
 	

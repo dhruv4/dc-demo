@@ -223,8 +223,6 @@ def demo():
 
 	conn.commit()
 
-	#drop table here?
-
 	print("done")
 	#print(time.time() - startTime)
 

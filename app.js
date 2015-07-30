@@ -94,18 +94,12 @@ io.on('connection', function(socket){
             }
 
         });
-
-
         socket.on('reset', function () {
-
             pgPerf.kill();
             mdbPerf.kill();
             cPerf.kill();
-
         });
-
     });
-
     socket.on('interStart', function (params){
 
         console.log("interaction started");
@@ -120,26 +114,27 @@ io.on('connection', function(socket){
             } else {
                 
                 //SPLIT OUTPUT BY '\n' THEN LOOP THROUGH
-                //console.log(String(output));
+                //console.log("output", String(output));
                 var loop = String(output).split('&');
 
                 for (var i = loop.length - 1; i >= 0; i--) {
 
-                    if(loop[i].indexOf('|') < 0)
+                    if(loop[i].indexOf('{') < 0)
                         continue;
 
-                    //console.log("loop", loop);
-                    var temp = loop[i].split('|');
-                    //console.log("inter", {level: temp[0], chunk: temp[1], stat: temp[2], childs: temp[3].trim()});
-                    io.sockets.emit('interNews', {level: temp[0].trim(), chunk: temp[1].trim(), stat: temp[2].trim(), childs: temp[3].trim()});
+                    console.log("loop", loop[i]);
+
+                    arr = loop[i].split("|");
+
+                    arr[1] = JSON.parse(arr[1]);
+
+                    console.log("inter", arr);
+                    io.sockets.emit('interNews', arr);
                 
                 }
             }
         });
-
     });
-
-
 });
 
 http.listen(8000, function(){

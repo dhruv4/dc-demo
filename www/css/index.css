@@ -7,6 +7,9 @@
 main {
   flex: 1 0 auto;
 }
+a:hover { 
+cursor: pointer;
+}
 .nav-wrapper img 	{
 	margin-top: 5px;
 	height: 45px;
@@ -15,6 +18,10 @@ nav, .navbarfixed, .nav-wrapper, header {
   height: 50px;
   line-height: 50px;
   font-family: serif;
+}
+#nav-mobile li a {
+  line-height: inherit;
+  height: 100%;
 }
 .parallax-container {
   height: 95vh;
