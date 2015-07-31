@@ -18,9 +18,10 @@ io.on('connection', function(socket){
     socket.on('start', function (params) {
         console.log('client sent ' + params);
 
-        //var pgPerf = spawn('python3', ["pgDummy.py", params[0], params[1], params[2]]);
+        mdbPerf = spawn('python3', ["mdbperf.py", params[0], params[1], params[2]]);
         pgPerf = spawn('python3', ["pgperf.py", params[0], params[1], params[2]]);
-        
+        cPerf = spawn('./demo_performance', [params[1], params[0], params[0]/params[2], 1]);
+
         pgPerf.stdout.on('data', function (output) { 
             
 
@@ -43,8 +44,6 @@ io.on('connection', function(socket){
                 io.sockets.emit('pgNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
         });
-
-        mdbPerf = spawn('python3', ["mdbperf.py", params[0], params[1], params[2]]);
         
         mdbPerf.stdout.on('data', function (output) { 
             
@@ -67,10 +66,7 @@ io.on('connection', function(socket){
                 //console.log("mdb", temp);
                 io.sockets.emit('mdbNews', {cache: temp[0].trim(), percent: temp[1].trim()});
             }
-        });
-
-        cPerf = spawn('./demo_performance', [params[1], params[0], params[0]/params[2], 1]);
-        
+        });        
         cPerf.stdout.on('data', function (output) { 
             
             
@@ -105,8 +101,11 @@ io.on('connection', function(socket){
         console.log("interaction started");
 
         console.log(params);
-        var interDem = spawn('python3', ["pgdc.py", params[0], params[1], params[2]]);
+        //var interDem = spawn('python3', ["pgdc.py", params[0], params[1], params[2]]);
+        var interDem = spawn('./demo_interact', [params[1], params[0], params[0]/params[2], 1]);
         interDem.stdout.on('data', function (output) { 
+
+            //console.log(String(output));
 
             if(String(output).trim() == "done"){
                 io.sockets.emit('interDone', "done");
@@ -117,18 +116,28 @@ io.on('connection', function(socket){
                 //console.log("output", String(output));
                 var loop = String(output).split('&');
 
-                for (var i = loop.length - 1; i >= 0; i--) {
+                //console.log(loop);
+
+                for (var i = 0; i < loop.length; i++) {
 
                     if(loop[i].indexOf('{') < 0)
                         continue;
 
-                    console.log("loop", loop[i]);
+                    //console.log("loop", loop[i]);
 
-                    arr = loop[i].split("|");
+                    arr = loop[i].trim().split("|");
 
-                    arr[1] = JSON.parse(arr[1]);
+                    console.log(arr);
 
-                    console.log("inter", arr);
+                    //arr[1] = arr[1].slice(0,-2);
+
+                    //arr[1] += "]";
+
+                    arr[1] = arr[1].replace(/,]/g, ']');
+
+                    arr[1] = JSON.parse(arr[1].trim());
+
+                    //console.log("inter", arr);
                     io.sockets.emit('interNews', arr);
                 
                 }

@@ -387,7 +387,7 @@ function enterDemo(){
 
 	//PRE-CREATE CHUNKS (with levels) BUT DONT SHOW
 
-	for(i = 1; i <= chunks; i++){
+	for(i = 0; i < chunks; i++){
 		$('#inter-accordion').append(
 			"<li id='lichunk" + i + "' style='display: none;'><div class='collapsible-header'>Chunk " + i 
 			+ "</div><div id='chunk" + i + "' class='chunk collapsible-body'>"

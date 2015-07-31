@@ -38,13 +38,19 @@ def createTable(cur, conn, name, numCol, b=0):
 
 	cur.execute("CREATE TABLE " + name + " " + cols)
 
-def createTable(cur, conn, name, numCol, p=0):
+def createTable(cur, conn, name, numCol, b=0, l=0):
 
-	if(p == 1):
-		cols = "(col0 bigint PRIMARY KEY,"
+	if(b == 1):
+		
+		if(l == 1):
+			cols = "(col0 bigint PRIMARY KEY,"
+		else:
+			cols = "(col0 int PRIMARY KEY,"
+
 		for x in range(1, numCol):
 			cols += "col" + str(x) + " double precision,"
 	else:
+
 		cols = "("
 		for x in range(numCol):
 			cols += "col" + str(x) + " int,"
@@ -63,7 +69,10 @@ def createDCTableSetup(table, levels, numChunks, numCols, numRows):
 	conn = mdb.connect(username="monetdb", password="monetdb", database="test")
 	cur = conn.cursor()
 
-	createTable(cur, conn, 'dc_' + table, 6, 1)
+	if(numCols + math.ceil(math.log(numChunks, 2)) >= 32):
+		createTable(cur, conn, 'dc_' + table, 6, 1, 1)
+	else:
+		createTable(cur, conn, 'dc_' + table, 6, 1)
 
 	conn.commit()
 
@@ -88,7 +97,7 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 			#	+" RETURN SELECT col FROM tbl LIMIT lim OFFSET off; END;")
 			##^^This is the statement that SHOULD work but doesn't because monetdb doesn't recognize the variables like "col", "lim"
 			
-			cur.execute("CREATE FUNCTION GET_CHUNK() RETURNS TABLE (clm integer) "
+			cur.execute("CREATE FUNCTION GET_CHUNKS() RETURNS TABLE (clm integer) "
 				+"BEGIN RETURN SELECT " + colList[i] + " FROM " + table + " LIMIT " + str(sizeChunk) + " OFFSET " + str(c*sizeChunk) + "; END;")
 			
 			#cur.execute("SELECT AVG(clm), STDDEV_SAMP(clm), VAR_SAMP(clm), MEDIAN(clm) FROM GET_CHUNK()")
@@ -113,7 +122,7 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1, col2, col3, col4, col5) VALUES (%s, %s, %s, %s, %s, %s)",
 				[ID, avg, std,var,med,mod])
 
-			cur.execute("DROP FUNCTION GET_CHUNK()")
+			cur.execute("DROP FUNCTION GET_CHUNKS()")
 
 			nodeCount+=1
 
@@ -142,16 +151,16 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 		for i in range(numCols - 1):
 			for j in range(i+1, numCols):
 
-				cur.execute("CREATE FUNCTION GET_CHUNK() RETURNS TABLE (cl1 bigint, cl2 bigint) "
+				cur.execute("CREATE FUNCTION GET_CHUNKS() RETURNS TABLE (cl1 bigint, cl2 bigint) "
 					+ "BEGIN RETURN SELECT " + colList[i] + "," + colList[j] + " FROM " + table 
 					+ " LIMIT " + str(sizeChunk) + " OFFSET " + str(c*sizeChunk) + "; END;")
 				
-				cur.execute("SELECT CORR(cl1, cl2) FROM GET_CHUNK()")
+				cur.execute("SELECT CORR(cl1, cl2) FROM GET_CHUNKS()")
 
 				cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
 					[idChunkCombine(2**i + 2**j, c, numChunks),float(cur.fetchone()[0])])
 
-				cur.execute("DROP FUNCTION GET_CHUNK()")
+				cur.execute("DROP FUNCTION GET_CHUNKS()")
 
 				nodeCount+=1
 
@@ -230,7 +239,7 @@ def demo():
 	numCols = int(sys.argv[2])
 	numChunks = int(sys.argv[3])
 
-	name = "demop" + str(random.randint(0, 12412099999999989))
+	name = "demop" + str(random.randint(0, 12412099999999))
 
 
 	conn = mdb.connect(username="monetdb", password="monetdb", database="test")
