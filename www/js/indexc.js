@@ -1,8 +1,5 @@
 var socket = io();
-var perfgraph;
-var opt, labels;
-var data, pgData, mdbData, cData;
-var xPos, pgXPos, mdbXPos, cXPos;
+var chart;
 var pgTimer, mdbTimer, cTimer, interTimer;
 var totalSeconds = 0;
 var cols, rows, chunks;
@@ -44,7 +41,6 @@ function startClick(){
 
 	pgTimer = new Stopwatch(document.getElementById('pg-time'));
 	mdbTimer = new Stopwatch(document.getElementById('mdb-time'));
-	console.log("banana");
 	cTimer = new Stopwatch(document.getElementById('c-time'));
 
 	pgTimer.start();
@@ -70,61 +66,49 @@ function startClick(){
 
 	socket.emit('start', [rows, cols, chunks]);
 
-	pgData = [0], mdbData = [0], cData = [0];
-	pgXPos = [0], mdbXPos = [0], cXPos = [0];
-	mydata = {
-		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-		xBegin : 0,
-		xEnd : 100,
-		datasets : [
-			{
-				fillColor : "rgba(220,220,220,0.5)",
-				strokeColor : "rgba(220,220,220,1)",
-				pointColor : "rgba(220,220,220,1)",
-				pointstrokeColor : "yellow",
-				data : pgData,
-				xPos : [0],
-				title : "Postgres"
-			},
-			{
-				fillColor : "rgba(151,187,205,0.5)",
-				strokeColor : "rgba(151,187,205,1)",
-				pointColor : "rgba(151,187,205,1)",
-				pointstrokeColor : "blue",
-				data : mdbData,
-				xPos : [0],
-				title : "MonetDB"
-			},
-			{
-				fillColor : "rgba(0,187,0,0.5)",
-				strokeColor : "rgba(0,187,0,1)",
-				pointColor : "rgba(0,187,0,1)",
-				pointstrokeColor : "green",
-				data : cData,
-				xPos : [0],
-				title : "C++"
-			}
+	chart = new CanvasJS.Chart("perfgraph", { 
+
+		axisX:{
+			minimum: 0,
+			maximum: 100,
+			title: "Percent Completeted",
+			labelFontSize: 12,
+			titleFontSize: 18,
+		},
+		axisY:{
+			minimum: 0,
+			title: "Time (sec)",
+			labelFontSize: 12,
+			titleFontSize: 18,
+		},
+		data: [
+		{
+			type: "splineArea",
+			showInLegend: true,
+			legendText: "MonetDB",
+			dataPoints: [
+				{ x: 0, y: 0 }	
+			]
+		}, 
+		{
+			type: "splineArea",
+			showInLegend: true,
+			legendText: "Canopy",
+			dataPoints: [
+			  { x: 0, y: 0 }
+			]
+		},
+		{
+			type: "splineArea",
+			showInLegend: true,
+			legendText: "Postgres",
+			dataPoints: [
+				{ x: 0, y: 0 }	
+			]
+		}, 
 		]
-	}
-
-	opt = {
-		animationLeftToRight : false,
-		animationSteps : 5,
-		animationEasing: "linear",
-		canvasBorders : false,
-		legend : true,
-		annotateDisplay : true,
-		graphTitleFontSize: 18, 
-		responsive : true,
-		fmtXLabel : "fmttime hh:mm:ss",
-		animationCount: 1,
-		animationPauseTime : 0,
-		animationBackward: true,
-		xAxisLabel : "Percent Built (%)",
-		yAxisLabel : "Time (sec)"
-	};
-
-	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
+	});
+	chart.render();	
 
 }
 function resetClick(){
@@ -153,103 +137,19 @@ function resetClick(){
 	$('#mdb-prog').css('width', "0%");
 	$('#c-prog').css('width', "0%");
 
-	mydata = {
-		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-		xBegin : 0,
-		xEnd : 100,
-		datasets : [
-			{
-				fillColor : "rgba(220,220,220,0.5)",
-				strokeColor : "rgba(220,220,220,1)",
-				pointColor : "rgba(220,220,220,1)",
-				pointstrokeColor : "yellow",
-				data : pgData,
-				xPos : [0],
-				title : "Postgres"
-			},
-			{
-				fillColor : "rgba(151,187,205,0.5)",
-				strokeColor : "rgba(151,187,205,1)",
-				pointColor : "rgba(151,187,205,1)",
-				pointstrokeColor : "blue",
-				data : mdbData,
-				xPos : [0],
-				title : "MonetDB"
-			},
-			{
-				fillColor : "rgba(0,187,0,0.5)",
-				strokeColor : "rgba(0,187,0,1)",
-				pointColor : "rgba(0,187,0,1)",
-				pointstrokeColor : "green",
-				data : cData,
-				xPos : [0],
-				title : "C++"
-			}
-		]
-	}
+	chart.options.data[0].dataPoints = {x: 0, y: 0};
+	chart.options.data[1].dataPoints = {x: 0, y: 0};
+	chart.options.data[2].dataPoints = {x: 0, y: 0};
 
-	opt = {
-		animationLeftToRight : false,
-		animationSteps : 5,
-		animationEasing: "linear",
-		canvasBorders : false,
-		legend : true,
-		annotateDisplay : true,
-		graphTitleFontSize: 18, 
-		responsive : true,
-		fmtXLabel : "fmttime hh:mm:ss",
-		animationCount: 1,
-		animationPauseTime : 0,
-		animationBackward: true,
-		xAxisLabel : "Percent Built (%)",
-		yAxisLabel : "Time (sec)"
-	};
-
-	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);
+	chart.render();
 
 }
 socket.on('pgNews', function (msg){
 
-	pgData.push(totalSeconds);
-
-	pgXPos.push(String(msg['percent']));
 	$('#pg-prog').css('width', String(msg['percent']) + "%");
-
-	mydata = {
-		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-		xBegin : 0,
-		xEnd : 100,
-		datasets : [
-			{
-				fillColor : "rgba(220,220,220,0.5)",
-				strokeColor : "rgba(220,220,220,1)",
-				pointColor : "rgba(220,220,220,1)",
-				pointstrokeColor : "yellow",
-				data : pgData,
-				xPos : pgXPos,
-				title : "Postgres"
-			},
-			{
-				fillColor : "rgba(151,187,205,0.5)",
-				strokeColor : "rgba(151,187,205,1)",
-				pointColor : "rgba(151,187,205,1)",
-				pointstrokeColor : "blue",
-				data : mdbData,
-				xPos : mdbXPos,
-				title : "MonetDB"
-			},
-			{
-				fillColor : "rgba(0,187,0,0.5)",
-				strokeColor : "rgba(0,187,0,1)",
-				pointColor : "rgba(0,187,0,1)",
-				pointstrokeColor : "green",
-				data : cData,
-				xPos : cXPos,
-				title : "C++"
-			}
-		]
-	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
+	
+	chart.options.data[2].dataPoints.push({ x: parseInt(msg['percent']), y: totalSeconds});
+	chart.render();
 
 	pgCache+=parseInt(msg['cache']);
 
@@ -260,50 +160,16 @@ socket.on('pgDone', function (msg){
 
 	$('#pg-prog').css('width', "100%");
 	pgTimer.stop();
+	chart.options.data[2].dataPoints.push({ x: 100, y: totalSeconds});
+	chart.render();
 
 });
 socket.on('mdbNews', function (msg){
 
-	mdbData.push(totalSeconds);
-	mdbXPos.push(String(msg['percent']));
 	$('#mdb-prog').css('width', String(msg['percent']) + "%");
 
-	mydata = {
-		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-		xBegin : 0,
-		xEnd : 100,
-		datasets : [
-			{
-				fillColor : "rgba(220,220,220,0.5)",
-				strokeColor : "rgba(220,220,220,1)",
-				pointColor : "rgba(220,220,220,1)",
-				pointstrokeColor : "yellow",
-				data : pgData,
-				xPos : pgXPos,
-				title : "Postgres"
-			},
-			{
-				fillColor : "rgba(151,187,205,0.5)",
-				strokeColor : "rgba(151,187,205,1)",
-				pointColor : "rgba(151,187,205,1)",
-				pointstrokeColor : "blue",
-				data : mdbData,
-				xPos : mdbXPos,
-				title : "MonetDB"
-			},
-			{
-				fillColor : "rgba(0,187,0,0.5)",
-				strokeColor : "rgba(0,187,0,1)",
-				pointColor : "rgba(0,187,0,1)",
-				pointstrokeColor : "green",
-				data : cData,
-				xPos : cXPos,
-				title : "C++"
-			}
-		]
-	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
-
+	chart.options.data[0].dataPoints.push({ x: parseInt(msg['percent']), y: totalSeconds});
+	chart.render();
 	mdbCache+=parseInt(msg['cache']);
 
 	$('#mdb-cache').html(mdbCache);
@@ -313,63 +179,28 @@ socket.on('mdbDone', function (msg){
 
 	mdbTimer.stop();
 	$('#mdb-prog').css('width', "100%");
+	chart.options.data[0].dataPoints.push({ x: 100, y: totalSeconds});
+	chart.render();
 
 });
 socket.on('cNews', function (msg){
 
-	cData.push(totalSeconds);
-	cXPos.push(String(msg['percent']));
 	$('#c-prog').css('width', String(msg['percent']) + "%");
 
-	//console.log("monet", mdbXPos);
-	mydata = {
-		labels : [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-		xBegin : 0,
-		xEnd : 100,
-		datasets : [
-			{
-				fillColor : "rgba(220,220,220,0.5)",
-				strokeColor : "rgba(220,220,220,1)",
-				pointColor : "rgba(220,220,220,1)",
-				pointstrokeColor : "yellow",
-				data : pgData,
-				xPos : pgXPos,
-				title : "Postgres"
-			},
-			{
-				fillColor : "rgba(151,187,205,0.5)",
-				strokeColor : "rgba(151,187,205,1)",
-				pointColor : "rgba(151,187,205,1)",
-				pointstrokeColor : "blue",
-				data : mdbData,
-				xPos : mdbXPos,
-				title : "MonetDB"
-			},
-			{
-				fillColor : "rgba(0,187,0,0.5)",
-				strokeColor : "rgba(0,187,0,1)",
-				pointColor : "rgba(0,187,0,1)",
-				pointstrokeColor : "green",
-				data : cData,
-				xPos : cXPos,
-				title : "C++"
-			}
-		]
-	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,false,false);
-	console.log("Updated", cData);
-	console.log("c", msg);
+	chart.options.data[1].dataPoints.push({ x: parseInt(msg['percent']), y: totalSeconds});
+	chart.render();
 
-	mdbCache+=parseInt(msg['cache']);
+	cCache+=parseInt(msg['cache']);
 
-	$('#c-cache').html(mdbCache);
-	console.log(mdbCache);
+	$('#c-cache').html(cCache);
 
 });
 socket.on('cDone', function (msg){
 
 	cTimer.stop();
 	$('#c-prog').css('width', "100%");
+	chart.options.data[1].dataPoints.push({ x: 100, y: totalSeconds});
+	chart.render();
 
 });
 function enterDemo(){
@@ -422,24 +253,7 @@ function enterDemo(){
 		]
 	}
 
-	opt = {
-		animationLeftToRight : false,
-		animationSteps : 5,
-		animationEasing: "linear",
-		canvasBorders : false,
-		legend : true,
-		annotateDisplay : true,
-		graphTitleFontSize: 18, 
-		responsive : true,
-		fmtXLabel : "fmttime hh:mm:ss",
-		animationCount: 1,
-		animationPauseTime : 0,
-		animationBackward: true,
-		xAxisLabel : "Percent Built (%)",
-		yAxisLabel : "Time (sec)"
-	};
-
-	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata,opt);*/
+	new Chart(document.getElementById("perfgraph").getContext("2d")).Line(mydata);*/
 
 	// ************** Generate the d3tree diagram  *****************
 	var margin = {top: 40, right: 50, bottom: 20, left: 50},
@@ -508,7 +322,7 @@ socket.on('interNews', function (msg){
 			}
 		]
 	}
-	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,opt,true,true);*/
+	updateChart(document.getElementById("perfgraph").getContext("2d"),mydata,true,true);*/
 	
 	//console.log("Updated", data);
 	//console.log(msg);

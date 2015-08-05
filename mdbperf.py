@@ -93,18 +93,8 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 	for c in range(numChunks):
 		for i in range(numCols):
 
-			#cur.execute("CREATE FUNCTION GET_CHUNK(lim INT, off INT, tbl varchar(32), col varchar(32)) RETURNS TABLE (clm integer)"
-			#	+" RETURN SELECT col FROM tbl LIMIT lim OFFSET off; END;")
-			##^^This is the statement that SHOULD work but doesn't because monetdb doesn't recognize the variables like "col", "lim"
-			
-			cur.execute("CREATE FUNCTION GET_CHUNKS() RETURNS TABLE (clm integer) "
-				+"BEGIN RETURN SELECT " + colList[i] + " FROM " + table + " LIMIT " + str(sizeChunk) + " OFFSET " + str(c*sizeChunk) + "; END;")
-			
-			#cur.execute("SELECT AVG(clm), STDDEV_SAMP(clm), VAR_SAMP(clm), MEDIAN(clm) FROM GET_CHUNK()")
-
-			#removed median for consistency
-
-			cur.execute("SELECT AVG(clm), STDDEV_SAMP(clm), VAR_SAMP(clm) FROM GET_CHUNK()")
+			cur.execute("SELECT AVG(" + colList[i] + "), STDDEV_SAMP(" + colList[i] + "), VAR_SAMP(" + colList[i] + ") FROM (SELECT " + colList[i] + ", ROW_NUMBER() OVER() as rnum FROM " 
+				+ table + ") as foo WHERE rnum > " + str(c*sizeChunk) + " AND rnum < " + str(sizeChunk + c*sizeChunk))
 
 			#avg, std, var, med = cur.fetchone()
 			avg, std, var = cur.fetchone()
@@ -121,8 +111,6 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 
 			cur.execute("INSERT INTO dc_" + table + " (col0, col1, col2, col3, col4, col5) VALUES (%s, %s, %s, %s, %s, %s)",
 				[ID, avg, std,var,med,mod])
-
-			cur.execute("DROP FUNCTION GET_CHUNKS()")
 
 			nodeCount+=1
 
@@ -151,16 +139,15 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 		for i in range(numCols - 1):
 			for j in range(i+1, numCols):
 
-				cur.execute("CREATE FUNCTION GET_CHUNKS() RETURNS TABLE (cl1 bigint, cl2 bigint) "
-					+ "BEGIN RETURN SELECT " + colList[i] + "," + colList[j] + " FROM " + table 
-					+ " LIMIT " + str(sizeChunk) + " OFFSET " + str(c*sizeChunk) + "; END;")
-				
-				cur.execute("SELECT CORR(cl1, cl2) FROM GET_CHUNKS()")
+				cur.execute("SELECT CORR(cl1, cl2) FROM (SELECT " + colList[i] + " as cl1," + colList[j] + " as cl2, ROW_NUMBER() OVER() as rnum FROM " 
+					+ table + ") as foo WHERE rnum > " + str(c*sizeChunk) + " AND rnum < " + str(sizeChunk + c*sizeChunk))
+
+				banana = cur.fetchone()[0]
+
+				print(banana)
 
 				cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
-					[idChunkCombine(2**i + 2**j, c, numChunks),float(cur.fetchone()[0])])
-
-				cur.execute("DROP FUNCTION GET_CHUNKS()")
+					[idChunkCombine(2**i + 2**j, c, numChunks),float(banana)])
 
 				nodeCount+=1
 
@@ -169,6 +156,7 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 					print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
 					prevPercent = p
 					sys.stdout.flush()
+
 	conn.commit()
 	return nodeCount
 
@@ -240,6 +228,7 @@ def demo():
 	numChunks = int(sys.argv[3])
 
 	name = "demop" + str(random.randint(0, 12412099999999))
+	print(name)
 
 
 	conn = mdb.connect(username="monetdb", password="monetdb", database="test")

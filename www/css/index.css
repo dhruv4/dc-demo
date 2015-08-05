@@ -19,6 +19,9 @@ nav, .navbarfixed, .nav-wrapper, header {
   line-height: 50px;
   font-family: serif;
 }
+.header {
+  text-align: center;
+}
 #nav-mobile li a {
   line-height: inherit;
   height: 100%;
@@ -26,14 +29,11 @@ nav, .navbarfixed, .nav-wrapper, header {
 .parallax-container {
   height: 95vh;
 }
-#head-cont {
-  height: 95vh;
-}
-#info-cont {
+#intro-cont {
   height: 95vh;
 }
 #demo-cont {
-  /*height: 95vh;*/
+  height: 95vh;
 }
 #people-cont {
   height: 95vh;
@@ -57,9 +57,14 @@ nav, .navbarfixed, .nav-wrapper, header {
 }
 .table-of-contents li a.active {
   border-left: 2px solid #CFC !important;
+  color: white !important;
 }
 .table-of-contents li a:hover {
   border-left: 1px solid #CFC !important;
+  color: white !important;
+}
+#perfgraph {
+  height: 85vh;
 }
 
 /*D3 Styles*/
@@ -85,9 +90,15 @@ nav, .navbarfixed, .nav-wrapper, header {
 }
 #inter-wrap {
 	padding: 10px;
+  overflow: auto; 
+  max-height: 85vh;
 }
 #inter-wrap img {
 	width: 100%;
+}
+#inter-accordion li div ul {
+  box-shadow: none !important;
+  border: none !important;
 }
 .chunk.collapsible-body {
   padding-left: 10px;
