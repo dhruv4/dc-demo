@@ -63,28 +63,32 @@ nav, .navbarfixed, .nav-wrapper, header {
   border-left: 1px solid #CFC !important;
   color: white !important;
 }
+#demo-cont i {
+  font-size: 7rem;
+}
+
 #perfgraph {
   height: 85vh;
 }
 
 /*D3 Styles*/
-.node circle {
+#node-modal .node circle {
   fill: #fff;
   stroke: rgb(213, 0, 0);
   stroke-width: 1.5px;
 }
 
-.node, .nodeone {
+#node-modal .node, .nodeone {
   font: 10px sans-serif;
   cursor: pointer;
 }
 
-.link {
+#node-modal .link {
   fill: none;
   stroke: #ccc;
   stroke-width: 1.5px;
 }
-.row {
+#node-modal .row {
 	padding-left: 5px;
 	padding-right: 5px;
 }
@@ -112,6 +116,39 @@ tr {
 }
 .card.z-depth-0 {
   box-shadow: none !important;
+}
+/*Concept Map Styles*/
+#concept-wrap svg {
+    font: 12px sans-serif;
+}
+
+#concept-wrap text {
+    pointer-events: none;
+}
+
+#concept-wrap .inner_node rect {
+    pointer-events: all;
+}
+
+#concept-wrap .inner_node rect.highlight {
+    stroke: #315B7E;
+    stroke-width: 2px;
+}
+
+#concept-wrap .outer_node circle {
+    fill: #fff;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+    pointer-events: all;
+}
+
+#concept-wrap .outer_node circle.highlight
+{
+    stroke: #315B7E;
+    stroke-width: 2px;
+}
+#concept-wrap .link {
+  fill: none;
 }
 /*footer*/
 footer.page-footer {

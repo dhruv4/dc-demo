@@ -142,12 +142,8 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 				cur.execute("SELECT CORR(cl1, cl2) FROM (SELECT " + colList[i] + " as cl1," + colList[j] + " as cl2, ROW_NUMBER() OVER() as rnum FROM " 
 					+ table + ") as foo WHERE rnum > " + str(c*sizeChunk) + " AND rnum < " + str(sizeChunk + c*sizeChunk))
 
-				banana = cur.fetchone()[0]
-
-				print(banana)
-
 				cur.execute("INSERT INTO dc_" + table + " (col0, col1) VALUES (%s, %s)", 
-					[idChunkCombine(2**i + 2**j, c, numChunks),float(banana)])
+					[idChunkCombine(2**i + 2**j, c, numChunks),float(cur.fetchone()[0])])
 
 				nodeCount+=1
 
@@ -228,8 +224,6 @@ def demo():
 	numChunks = int(sys.argv[3])
 
 	name = "demop" + str(random.randint(0, 12412099999999))
-	print(name)
-
 
 	conn = mdb.connect(username="monetdb", password="monetdb", database="test")
 	cur = conn.cursor()

@@ -55,29 +55,26 @@
 						<p class="white-text center" style="font-size: 22px;">Modern data systems only let us retrieve data, and then ask “if it is interesting”. This implies one has to know what they are looking for up front! Instead, we envision a new class of systems that let us ask “what is interesting”.</p>
 					</div>
 				</div>
-				<div id="demo-cont" class="section white scrollspy">
+				<div id="demo-cont" class="section container white scrollspy">
 					<h2 class="header black-text">Demo</h2>
 					<div class="valign-wrapper" style="height: 70%;">
 						<div class="row valign">
-							<div class="card col s5">
-								<div class="card-content">
-									<div class="row">
-										<span class="col s12 card-title black-text center">
-											Performance Comparison
-										</span>
-										<a href="#" class="col s6 offset-s3 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterTest()">Enter</a>
-									</div>
-								</div>
+							<div class="col center s4">
+								<i class="material-icons cyan-text text-darken-4">assessment</i>
+								<h4>Performance Comparison</h4>
+								<a href="#" class="col s12 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterTest()">Enter</a>
 							</div>
-							<div class="card col offset-s2 s5">
-								<div class="card-content">
-									<div class="row">
-										<span class="col s12 card-title black-text center">
-											Interaction Demo
-										</span>
-										<a href="#" class="col s6 offset-s3 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterDemo()">Enter</a>
-									</div>
-								</div>
+							<div class="col center s4">
+								<i class="material-icons cyan-text text-darken-4">dashboard</i>
+								<h4>Data Structure Demo</h4>
+								<a href="#" class="col s12 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterDemo()">Enter</a>
+							</div>
+							<div class="col center s4">
+								<!--i class="material-icons cyan-text text-darken-4">library_books</i-->
+								<!--i class="material-icons cyan-text text-darken-4">graphic_eq</i-->
+								<i class="material-icons cyan-text text-darken-4">blur_on</i>
+								<h4>Concept Map Interaction</h4>
+								<a href="#" class="col s12 waves-effect waves-light btn cyan darken-4" type="button" id="join-list" onclick="enterConcept()">Enter</a>
 							</div>
 						</div>
 					</div>
@@ -279,6 +276,93 @@
 							</div>
 						</div>
 						<div id="inter-time" class="stopwatch" style="display:none;"></div>
+						<!--div class="card col s12">
+							<div class="card-content">
+								<span class="card-title black-text">
+									Alter Parameters
+								</span>
+								<div class="input-field">
+									<input id="col-input" type="text">
+									<label for="col-input">Columns</label>
+								</div>
+								<button class="waves-effect waves-light btn red accent-4" type="button" id="change" onclick="">Change</button>
+							</div>
+						</div>
+						<div class="card col s12">
+							<div class="card-content">
+								 <div class="switch">
+									<label>
+										Full
+										<input type="checkbox">
+										<span class="lever"></span>
+										Adaptive
+									</label>
+								</div>
+							</div>
+						</div-->
+					</div>
+				</div>
+			</div>
+			<div id="concept-container" style="display: none;">
+				<div id="concept-modal" class="modal">
+					<div class="modal-content">
+						<h4>Statistics</h4>
+						<div></div>
+					</div>
+				</div>
+				<div class="row">
+					<div id="concept-wrap" class="col s9">
+						<div id="concept-map" class="chart"></div>
+						<div class="col s12 m4 offset-m5 valign-wrapper" style="height: 100%;">
+							<div class="preloader-wrapper big active valign">
+								<div class="spinner-layer spinner-cyan darken-4-only">
+									<div class="circle-clipper left">
+										<div class="circle"></div>
+									</div><div class="gap-patch">
+									<div class="circle"></div>
+									</div><div class="circle-clipper right">
+										<div class="circle"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div id="concept-side-wrap" class="col s3">
+						<div class="card col s12">
+							<div class="card-content">
+								Level
+								<p class="range-field">
+									<input type="range" onchange="changeLevel(this.value)" id="level-slider" min="1" max="5" />
+									<label id="conceptLevelVal"></label>
+								</p>
+							</div>
+						</div>
+						<div class="card col s12">
+							<div class="card-content">
+								Threshold
+								<p class="range-field">
+									<input type="range" onchange="changeThresh(this.value)" id="threshold-slider" min="0" max="200" />
+									<label id="conceptThreshVal"></label>
+								</p>
+							</div>
+						</div>
+						<div class="card col s12">
+							<div class="card-content">
+								Chunk Number
+								<p class="range-field">
+									<input type="range" onchange="changeChunk(this.value)" id="chunk-slider" min="1" max="10" value="1" />
+									<label id="conceptChunkVal"></label>
+								</p>
+							</div>
+						</div>
+						<div class="card col s12">
+							<div class="card-content">
+								<table class="centered responsive-table">
+									<tbody id="checkbox-body">
+									</tbody>
+								</table>
+							</div>
+						</div>
 						<!--div class="card col s12">
 							<div class="card-content">
 								<span class="card-title black-text">

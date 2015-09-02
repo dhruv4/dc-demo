@@ -10,11 +10,7 @@ def checkLevel1(x):
 	return (x == 1)
 
 def checkLevel2(x):
-	'''
-	while (((x & 1) == 0) and x > 1): #/* While x is even and > 1 */
-		x >>= 1
-	return (x == 2)
-	'''
+
 	return bin(x).count('1') == 2
 
 def findPercent(nodeCount, sizeDC):

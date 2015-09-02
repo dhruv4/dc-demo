@@ -3,6 +3,7 @@ var app = express();
 var spawn = require('child_process').spawn;
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var pg = require('pg');
 
 app.use(express.static('www'));
 
@@ -144,6 +145,40 @@ io.on('connection', function(socket){
             }
         });
     });
+
+    socket.on('conceptmap', function (params){
+
+        console.log('concept map');
+
+        //same thing as before expect just send back children stat + children!
+        //level, threshold, Cols, chunk#
+
+        var pgConcept = spawn('python3', ["pgconcept.py", params[0], params[1], String(params[2]), params[3]]);
+
+        var conceptData = [];
+
+        pgConcept.stdout.on('data', function (output) { 
+            
+
+            var loop = String(output).split('&');
+            //console.log("loop", loop);
+
+            for (var i = 0; i < loop.length; i++) {
+
+                if(loop[i].indexOf('done') > 0)
+                    io.sockets.emit('conceptDone', conceptData);
+
+                if(loop[i].indexOf('|') < 0)
+                    continue;
+
+                var temp = String(loop[i]).split('|');
+                conceptData.push([JSON.parse(temp[0]), JSON.parse(temp[1])]);
+            
+            }
+        });
+
+    });
+
 });
 
 http.listen(8000, function(){
