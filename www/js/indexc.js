@@ -673,7 +673,7 @@ function updateConcept(){
 	  .range([colors.length - 1, 0])
 	  .clamp(true);
 
-	var diameter = 600;
+	var diameter = 800;
 	var rect_width = 40;
 	var rect_height = 14;
 
