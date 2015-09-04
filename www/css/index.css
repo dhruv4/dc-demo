@@ -95,10 +95,19 @@ nav, .navbarfixed, .nav-wrapper, header {
 #inter-wrap {
 	padding: 10px;
   overflow: auto; 
-  max-height: 85vh;
+  height: 85vh;
+}
+#inter-accordion {
+  width: 100%;
+}
+#side-wrap {
+  height: 85vh;
 }
 #inter-wrap img {
 	width: 100%;
+}
+#inter-accordion li div.active {
+  background-color: #006064 !important;
 }
 #inter-accordion li div ul {
   box-shadow: none !important;

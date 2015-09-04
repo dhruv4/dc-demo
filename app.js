@@ -128,7 +128,7 @@ io.on('connection', function(socket){
 
                     arr = loop[i].trim().split("|");
 
-                    console.log(arr);
+                    //console.log(arr);
 
                     //arr[1] = arr[1].slice(0,-2);
 

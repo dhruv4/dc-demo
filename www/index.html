@@ -12,6 +12,7 @@
 		<!--script src="js/Chartjs-master/Chart.js"></script-->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 		<script src="js/jquery.heatcolor.0.0.1.pack.js"></script>
+		<script src="js/circle-progress.js"></script>
 		<!--script src="js/index.js"></script-->
 		<script src="js/indexc.js"></script>
 	    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -152,6 +153,7 @@
 							<div class="progress cyan lighten-4">
 								<div id="mdb-prog" class="determinate cyan darken-4" style="width: 0%"></div>
 							</div>
+							<label for="mdb-prog">Progress</label>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
@@ -178,6 +180,7 @@
 							<div class="progress cyan lighten-4">
 								<div id="c-prog" class="determinate cyan darken-4" style="width: 0%"></div>
 							</div>
+							<label for="c-prog">Progress</label>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
@@ -204,6 +207,7 @@
 							<div class="progress cyan lighten-4">
 								<div id="pg-prog" class="determinate cyan darken-4" style="width: 0%"></div>
 							</div>
+							<label for="pg-prog">Progress</label>
 							<div class="row">
 								<div class="card col s5">
 									<div class="card-content">
@@ -250,29 +254,13 @@
 					</div>
 				</div>
 				<div class="row">
-					<div id="inter-wrap" class="col s9">
-						<ul id="inter-accordion" class="collapsible popout" data-collapsible="accordion" style="display: none;">
-						</ul>
-						<div class="col s12 m4 offset-m5 valign-wrapper" style="height: 100%;">
-							<div class="preloader-wrapper big active valign">
-								<div class="spinner-layer spinner-cyan darken-4-only">
-									<div class="circle-clipper left">
-										<div class="circle"></div>
-									</div><div class="gap-patch">
-									<div class="circle"></div>
-									</div><div class="circle-clipper right">
-										<div class="circle"></div>
-									</div>
-								</div>
-							</div>
-						</div>
+					<div id="inter-wrap" class="col s9 valign-wrapper">
+						<ul id="inter-accordion" class="collapsible popout valign" data-collapsible="accordion" style="display: none;"></ul>
 					</div>
-					<div id="side-wrap" class="col s3">
-						<div class="card col s12">
-							<div class="card-content">
-								<div class="progress cyan lighten-4">
-									<div id="inter-prog" class="determinate cyan darken-4" style="width: 0%"></div>
-								</div>
+					<div id="side-wrap" class="col s3 valign-wrapper">
+						<div class="card col s12 valign">
+							<div class="card-content center">
+								<div id="circle-inter-prog"></div>
 							</div>
 						</div>
 						<div id="inter-time" class="stopwatch" style="display:none;"></div>

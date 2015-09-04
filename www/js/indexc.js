@@ -233,6 +233,14 @@ function enterDemo(){
 
 	$('.collapsible').collapsible();
 
+	$('#circle-inter-prog').circleProgress({
+        value: 0,
+        size: 80,
+        fill: {
+            gradient: ["green", "red"]
+        }
+    });
+
 	socket.emit('interStart', [rows, cols, chunks]);
 
 	//TIMER
@@ -269,12 +277,18 @@ function enterDemo(){
 
 }
 
-socket.on('interDone', function (msg){
+socket.on('interDone', interDone);
+
+function interDone(){
 	interTimer.stop();
 	$("#inter-time").remove();
-	$('#inter-prog').css('width', "100%");
-});
-
+	$('#circle-inter-prog').circleProgress('value', 1);
+	setTimeout(function(){
+		$("#side-wrap").hide();
+		$("#inter-wrap").removeClass("s9");
+		$("#inter-wrap").addClass("s12");
+	}, 1000);
+}
 
 socket.on('interNews', function (msg){
 
@@ -285,7 +299,7 @@ socket.on('interNews', function (msg){
 
 	js = msg[1];
 
-	$('#inter-prog').css('width', String(percent) + "%");
+	$('#circle-inter-prog').circleProgress('value', percent/100);
 
 	for (var i = js.length - 1; i >= 0; i--) {
 		console.log(js[i]);
@@ -308,6 +322,11 @@ socket.on('interNews', function (msg){
 		{	lightness: 0,colorStyle: 'greentored' }
 	);
 	
+	if(percent == 100){
+		interDone();
+		return;
+	}
+
 });
 
 function nodeClick(val, list){
@@ -667,7 +686,7 @@ function updateConcept(){
 
 	// from d3 colorbrewer: 
 	// This product includes color specifications and designs developed by Cynthia Brewer (http://colorbrewer.org/).
-	var colors = ["#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf", "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"]
+	var colors = ["#00FF00", "#35FF00", "#58FF00", "#7CFF00", "#B0FF00", "#E5FF00", "#FFE400", "#FFAF00", "#FF6900", "#FF3400", "#FF0000"]
 	var color = d3.scale.linear()
 	  .domain([min, max])
 	  .range([colors.length - 1, 0])
