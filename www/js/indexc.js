@@ -32,6 +32,8 @@ function enterTest(){
 	$('#nav-mobile').remove();
 	$('#concept-container').remove();
 	$('.thumb').addClass('cyan darken-4');
+	$('#home-icon').show();
+	$('#inter-intro-modal').openModal();
 
 }
 function startClick(){
@@ -213,6 +215,8 @@ function enterDemo(){
 	$('#nav-mobile').remove();
 	$('#demo-container').show();
 	$('#concept-container').remove();
+	$('#home-icon').show();
+	$('#perf-intro-modal').openModal();
 
 	rows = 100, cols = 6, chunks = 5;
 
@@ -284,7 +288,7 @@ function interDone(){
 	$("#inter-time").remove();
 	$('#circle-inter-prog').circleProgress('value', 1);
 	setTimeout(function(){
-		$("#side-wrap").hide();
+		$("#side-wrap").hide('slide',{direction:'right'},1000);
 		$("#inter-wrap").removeClass("s9");
 		$("#inter-wrap").addClass("s12");
 	}, 1000);
@@ -475,6 +479,8 @@ function enterConcept() {
 	$('#demo-container').remove();
 	$('#concept-container').show();
 	$('#nav-mobile').remove();
+	$('#home-icon').show();
+	$('#concept-intro-modal').openModal();
 
 	conceptLevels = 5, conceptThresh = 0, conceptCols = ["0","1","2","3", "4"], conceptChunk = 1;
 
