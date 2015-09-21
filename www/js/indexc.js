@@ -661,9 +661,9 @@ function updateConcept(){
 	if(conceptLevels != 1){
 		$('#threshold-slider').attr('min', min-1);
 		$('#threshold-slider').attr('max', max);
-		$('#threshold-slider').removeClass("disabled");
+		$('#threshold-slider').prop('disabled', false);
 	} else {
-		$('#threshold-slider').addClass("disabled");
+		$('#threshold-slider').prop('disabled', true);
 	}
 	var data = {
 	  inner: inner,
@@ -857,9 +857,6 @@ function updateConcept(){
 		  	$("#concept-modal").openModal();
 		  	return;
 		  })
-		  .on("mouseover", function(d){
-		  	console.log("banana");
-		  })
 		  .attr('fill', function(d) {
 		    return get_color(d.name);
 		  });
@@ -884,13 +881,12 @@ function updateConcept(){
 	  .text(function(d) {
 	    return d.name;
 	  });
-
 	// need to specify x/y/etc
-
 	d3.select(self.frameElement).style("height", diameter - 150 + "px");
 
 	function mouseover(d) {
 	  // bring to front
+	  $('rect').css( 'cursor', 'pointer' );
 	  d3.selectAll('.links .link').sort(function(a, b) {
 	    return d.related_links.indexOf(a.id);
 	  });
@@ -905,6 +901,7 @@ function updateConcept(){
 	}
 
 	function mouseout(d) {
+	  $('rect').css( 'cursor', 'auto' );
 	  for (var i = 0; i < d.related_nodes.length; i++) {
 	    d3.select('#' + d.related_nodes[i]).classed('highlight', false);
 	    d3.select('#' + d.related_nodes[i] + '-txt').attr("font-weight", 'normal');
