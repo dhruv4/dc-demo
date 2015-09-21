@@ -264,7 +264,7 @@ def demo():
 		for i in vals:
 			col = i[0][:numCols].index("1")
 			chunk = int(i[0][-math.ceil(math.log(10, 2)):], 2)
-			if(chunk == numChunk):
+			if(chunk == numChunk and str(col) in columns):
 				print(str([i[1], i[2], i[3], i[4], i[5]]) + "|" + str([col]) + "&")
 
 	print("done")

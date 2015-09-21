@@ -585,7 +585,7 @@ function updateConcept(){
 	var links = [];
 	
 	if(conceptLevels != 1)
-		var max = 0, min = conceptData[0][0];
+		var max = -100, min = conceptData[0][0];
 
 	var outerId = [0];
 
@@ -661,7 +661,6 @@ function updateConcept(){
 	if(conceptLevels != 1){
 		$('#threshold-slider').attr('min', min-1);
 		$('#threshold-slider').attr('max', max);
-		$('#threshold-slider').val(max);
 		$('#threshold-slider').removeClass("disabled");
 	} else {
 		$('#threshold-slider').addClass("disabled");
