@@ -43,7 +43,7 @@ nav, .navbarfixed, .nav-wrapper, header {
   text-decoration: none;
 }
 #people-cont a:hover {
-  color: white;
+  color: #006064;
   text-decoration: none;
 }
 .table-of-contents li {
@@ -60,7 +60,7 @@ nav, .navbarfixed, .nav-wrapper, header {
   color: white !important;
 }
 .table-of-contents li a:hover {
-  border-left: 1px solid #CFC !important;
+  border-left: none !important;
   color: white !important;
 }
 #demo-cont i {
