@@ -93,7 +93,7 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 
 			p = findPercent(nodeCount, sizeDC)
 			if(p - prevPercent >= 5):
-				print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
+				print(str(random.randint(23,28123)) + "|" + str(p) + "&", sep="")
 				prevPercent = p
 				sys.stdout.flush()
 
@@ -130,7 +130,7 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 
 				p = findPercent(nodeCount, sizeDC)
 				if(p - prevPercent >= 5):
-					print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
+					print(str(random.randint(23,28123)) + "|" + str(p) + "&", sep="")
 					prevPercent = p
 					sys.stdout.flush()
 
@@ -173,7 +173,7 @@ def createDCTableLeveln(table, levels, numChunks, numCols, numRows, nodeCount):
 
 			p = findPercent(nodeCount, sizeDC)
 			if(p - prevPercent >= 5):
-				print(str(random.randint(23,28123)) + "|" + str(p) + "&", flush=True, sep="")
+				print(str(random.randint(23,28123)) + "|" + str(p) + "&", sep="")
 				prevPercent = p
 				sys.stdout.flush()
 
