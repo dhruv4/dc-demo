@@ -1,7 +1,6 @@
 var socket = io();
 var chart;
 var pgTimer, mdbTimer, cTimer, interTimer;
-var totalSeconds = 0.0;
 var cols, rows, chunks;
 var conceptCols, conceptLevels, conceptThresh, conceptChunk;
 var counter = 0;
@@ -127,8 +126,6 @@ function resetClick(){
 	pgTimer.stop();
 	mdbTimer.stop();
 	cTimer.stop();
-
-	totalSeconds = 0;
 
 	socket.emit('reset');
 
@@ -956,8 +953,6 @@ var Stopwatch = function(elem, options) {
   function update() {
   	d = delta()
     clock += d;
-    totalSeconds += d;
-    totalSeconds /= 1000
     render();
   }
 
