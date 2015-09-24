@@ -151,7 +151,7 @@ socket.on('pgNews', function (msg){
 
 	$('#pg-prog').css('width', String(msg['percent']) + "%");
 	
-	chart.options.data[2].dataPoints.push({ x: parseInt(msg['percent']), y: totalSeconds});
+	chart.options.data[2].dataPoints.push({ x: parseInt(msg['percent']), y: pgtimer.clock/1000});
 	chart.render();
 
 	pgCache+=parseInt(msg['cache']);
