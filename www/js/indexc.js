@@ -1,7 +1,7 @@
 var socket = io();
 var chart;
 var pgTimer, mdbTimer, cTimer, interTimer;
-var totalSeconds = 0;
+var totalSeconds = 0.0;
 var cols, rows, chunks;
 var conceptCols, conceptLevels, conceptThresh, conceptChunk;
 var counter = 0;
@@ -151,7 +151,7 @@ socket.on('pgNews', function (msg){
 
 	$('#pg-prog').css('width', String(msg['percent']) + "%");
 	
-	chart.options.data[2].dataPoints.push({ x: parseInt(msg['percent']), y: parseInt($('#pg-time').text())});
+	chart.options.data[2].dataPoints.push({ x: parseInt(msg['percent']), y: parseFloat($('#pg-time').text())});
 	chart.render();
 
 	pgCache+=parseInt(msg['cache']);
