@@ -163,7 +163,7 @@ socket.on('pgDone', function (msg){
 
 	$('#pg-prog').css('width', "100%");
 	pgTimer.stop();
-	chart.options.data[2].dataPoints.push({ x: 100, y: totalSeconds});
+	chart.options.data[2].dataPoints.push({ x: 100, y: parseFloat($('#pg-time').text())});
 	chart.render();
 
 });
@@ -171,7 +171,7 @@ socket.on('mdbNews', function (msg){
 
 	$('#mdb-prog').css('width', String(msg['percent']) + "%");
 
-	chart.options.data[0].dataPoints.push({ x: parseInt(msg['percent']), y: totalSeconds});
+	chart.options.data[0].dataPoints.push({ x: parseInt(msg['percent']), y: parseFloat($('#mdb-time').text())});
 	chart.render();
 	mdbCache+=parseInt(msg['cache']);
 
@@ -184,7 +184,7 @@ socket.on('mdbDone', function (msg){
 
 	mdbTimer.stop();
 	$('#mdb-prog').css('width', "100%");
-	chart.options.data[0].dataPoints.push({ x: 100, y: totalSeconds});
+	chart.options.data[0].dataPoints.push({ x: 100, y: parseFloat($('#mdb-time').text())});
 	chart.render();
 
 });
@@ -192,7 +192,7 @@ socket.on('cNews', function (msg){
 
 	$('#c-prog').css('width', String(msg['percent']) + "%");
 
-	chart.options.data[1].dataPoints.push({ x: parseInt(msg['percent']), y: totalSeconds});
+	chart.options.data[1].dataPoints.push({ x: parseInt(msg['percent']), y: parseFloat($('#c-time').text())});
 	chart.render();
 
 	cCache+=parseInt(msg['cache']);
@@ -204,7 +204,7 @@ socket.on('cDone', function (msg){
 
 	cTimer.stop();
 	$('#c-prog').css('width', "100%");
-	chart.options.data[1].dataPoints.push({ x: 100, y: totalSeconds});
+	chart.options.data[1].dataPoints.push({ x: 100, y: parseFloat($('#c-time').text())});
 	chart.render();
 
 });
