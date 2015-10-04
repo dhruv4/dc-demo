@@ -4,6 +4,10 @@ var spawn = require('child_process').spawn;
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var pg = require('pg');
+var postgres;
+var monet;
+
+process.stdin.resume();//so the program will not close instantly
 
 app.use(express.static('www'));
 
@@ -13,8 +17,8 @@ app.get('/', function(req, res){
 
 io.on('connection', function(socket){
 
-    spawn('sudo -u postgres /usr/lib/postgresql/9.1/bin/pg_ctl -D /var/lib/postgresql/9.1/main/ -o "-c config_file=/etc/postgresql/9.1/main/postgresql.conf" start');
-    spawn('/usr/local/bin/mserver5 --dbpath=/home/gupta/mydbfarm/test --set merovingian_uri=mapi:monetdb://adama:50000/test --set mapi_open=false --set mapi_port=50000 --set mapi_usock=/home/gupta/mydbfarm/test/.mapi.sock --set monet_vault_key=/home/gupta/mydbfarm/test/.vaultkey --set gdk_nr_threads=1 --set max_clients=64 --set sql_optimizer=default_pipe --set monet_daemon=yes');
+    postgres = spawn('sudo', ['-u', 'postgres', '/usr/lib/postgresql/9.1/bin/pg_ctl', '-D', '/var/lib/postgresql/9.1/main/', '-o', '"-c', 'config_file=/etc/postgresql/9.1/main/postgresql.conf"', 'start']);
+    monet = spawn('/usr/local/bin/mserver5', ['--dbpath=/home/gupta/mydbfarm/test', '--set', 'merovingian_uri=mapi:monetdb://adama:50000/test', '--set', 'mapi_open=false', '--set', 'mapi_port=50000', '--set', 'mapi_usock=/home/gupta/mydbfarm/test/.mapi.sock', '--set', 'monet_vault_key=/home/gupta/mydbfarm/test/.vaultkey', '--set', 'gdk_nr_threads=1', '--set', 'max_clients=64', '--set', 'sql_optimizer=default_pipe', '--set', 'monet_daemon=yes']);
 
     var pgPerf, mdbPerf, cPerf;
 
@@ -188,18 +192,17 @@ http.listen(8000, function(){
     console.log('listening on *:8000');
 });
 
-process.stdin.resume();//so the program will not close instantly
-
-function exitHandler(err) {
-    if (err) console.log(err.stack);
+function exitHandler() {
+    postgres.kill();
+    monet.kill();
     spawn('sudo -u postgres killall postgres');
 }
 
 //do something when app is closing
-process.on('exit', exitHandler.bind(null));
+process.on('exit', exitHandler.bind());
 
 //catches ctrl+c event
-process.on('SIGINT', exitHandler.bind(null));
+process.on('SIGINT', exitHandler.bind());
 
 
 
