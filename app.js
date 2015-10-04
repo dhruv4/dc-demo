@@ -18,7 +18,7 @@ app.get('/', function(req, res){
 });
 
 io.on('connection', function(socket){
-    exec('sudo -u postgres /usr/lib/postgresql/9.1/bin/pg_ctl -D /var/lib/postgresql/9.1/main/ start');
+    exec('sudo -u postgres /usr/lib/postgresql/9.1/bin/pg_ctl -D /var/lib/postgresql/9.1/main/ -o "-c config_file=/etc/postgresql/9.1/main/postgresql.conf" start');
     //postgres = sudo(['-u', 'postgres', '/usr/lib/postgresql/9.1/bin/pg_ctl', '-D', '/var/lib/postgresql/9.1/main/', 'start']);
     monet = spawn('/usr/local/bin/mserver5', ['--dbpath=/home/gupta/mydbfarm/test', '--set', 'merovingian_uri=mapi:monetdb://adama:50000/test', '--set', 'mapi_open=false', '--set', 'mapi_port=50000', '--set', 'mapi_usock=/home/gupta/mydbfarm/test/.mapi.sock', '--set', 'monet_vault_key=/home/gupta/mydbfarm/test/.vaultkey', '--set', 'gdk_nr_threads=1', '--set', 'max_clients=64', '--set', 'sql_optimizer=default_pipe', '--set', 'monet_daemon=yes']);
 
@@ -195,9 +195,9 @@ http.listen(8000, function(){
 });
 
 function exitHandler() {
-    postgres.kill();
     monet.kill();
-    spawn('killall mserver5');
+    //postgres.kill();
+    //sudo('killall mserver5');
     spawn('sudo -u postgres killall postgres');
 }
 
