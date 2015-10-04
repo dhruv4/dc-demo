@@ -199,6 +199,7 @@ function exitHandler() {
     //postgres.kill();
     sudo(['killall','mserver5']);
     sudo(['killall','postgres']);
+    process.exit();
 }
 
 //do something when app is closing
