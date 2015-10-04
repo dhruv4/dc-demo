@@ -1,6 +1,7 @@
 var express = require('express');
 var app = express();
 var spawn = require('child_process').spawn;
+var exec = require('child_process').exec;
 var sudo = require('sudo');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
@@ -196,6 +197,7 @@ http.listen(8000, function(){
 function exitHandler() {
     postgres.kill();
     monet.kill();
+    spawn('killall mserver5');
     spawn('sudo -u postgres killall postgres');
 }
 
