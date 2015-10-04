@@ -201,10 +201,6 @@ process.on('exit', exitHandler.bind(null));
 //catches ctrl+c event
 process.on('SIGINT', exitHandler.bind(null));
 
-//catches uncaught exceptions
-process.on('uncaughtException', exitHandler.bind(null));
-
-
 
 
 
