@@ -197,8 +197,8 @@ http.listen(8000, function(){
 function exitHandler() {
     monet.kill();
     //postgres.kill();
-    sudo('killall mserver5');
-    sudo('killall postgres');
+    sudo(['killall mserver5']);
+    sudo(['killall postgres']);
 }
 
 //do something when app is closing
