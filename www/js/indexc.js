@@ -12,7 +12,6 @@ var tree, root, svg, iTree, duration, diagonal; //d3tree variables
 $(document).ready(function(){
 	$('.parallax').parallax();
 	$('.scrollspy').scrollSpy();
-	$('.slider').slider({full_width: true});
 });
 function scrollHead() {
 	$('html, body').animate({
@@ -34,6 +33,7 @@ function enterTest(){
 	$('.thumb').addClass('cyan darken-4');
 	$('#home-icon').show();
 	$('#inter-intro-modal').openModal();
+	$('.slider').slider({full_width: true});
 
 }
 function startClick(){
@@ -215,6 +215,7 @@ function enterDemo(){
 	$('#concept-container').remove();
 	$('#home-icon').show();
 	$('#perf-intro-modal').openModal();
+	$('.slider').slider({full_width: true});
 
 	rows = 100, cols = 6, chunks = 5;
 
@@ -479,6 +480,7 @@ function enterConcept() {
 	$('#nav-mobile').remove();
 	$('#home-icon').show();
 	$('#concept-intro-modal').openModal();
+	$('.slider').slider({full_width: true});
 
 	conceptLevels = 5, conceptThresh = 0, conceptCols = ["0","1","2","3", "4"], conceptChunk = 1;
 
