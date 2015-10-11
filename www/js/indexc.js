@@ -32,7 +32,7 @@ function enterTest(){
 	$('#concept-container').remove();
 	$('.thumb').addClass('cyan darken-4');
 	$('#home-icon').show();
-	$('#inter-intro-modal').openModal();
+	$('#perf-intro-modal').openModal();
 	$('.slider').slider({full_width: true});
 
 }
@@ -214,7 +214,7 @@ function enterDemo(){
 	$('#demo-container').show();
 	$('#concept-container').remove();
 	$('#home-icon').show();
-	$('#perf-intro-modal').openModal();
+	$('#inter-intro-modal').openModal();
 	$('.slider').slider({full_width: true});
 
 	rows = 100, cols = 6, chunks = 5;
