@@ -12,6 +12,7 @@ var tree, root, svg, iTree, duration, diagonal; //d3tree variables
 $(document).ready(function(){
 	$('.parallax').parallax();
 	$('.scrollspy').scrollSpy();
+	$('.slider').slider({full_width: true});
 });
 function scrollHead() {
 	$('html, body').animate({
