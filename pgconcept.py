@@ -2,7 +2,7 @@
 import sys, random, math, itertools
 import psycopg2 as pg
 import time
-import simplejson as json
+#import simplejson as json
 from numpy import *
 
 def checkLevel1(x):
@@ -92,13 +92,13 @@ def createDCTableLevel1(table, levels, numChunks, numCols, numRows):
 
 			p = findPercent(nodeCount, sizeDC)
 			if(p - prevPercent >= 5):
-				print(json.dumps(dct) + "&", flush=True, sep="")
+				#print(json.dumps(dct) + "&", flush=True, sep="")
 				prevPercent = p
 				sys.stdout.flush()
 				dct = []
 
 	if(len(dct) > 0):
-		print(json.dumps(dct) + "&", flush=True, sep="")
+		#print(json.dumps(dct) + "&", flush=True, sep="")
 		sys.stdout.flush()
 		dct = []
 
@@ -140,14 +140,14 @@ def createDCTableLevel2(table, levels, numChunks, numCols, numRows, nodeCount):
 
 				p = findPercent(nodeCount, sizeDC)
 				if(p - prevPercent >= 5):
-					print(json.dumps(dct) + "&", flush=True, sep="")
+					#print(json.dumps(dct) + "&", flush=True, sep="")
 					prevPercent = p
 					sys.stdout.flush()
 					dct = []
 
 
 	if(len(dct) > 0):
-		print(json.dumps(dct) + "&", flush=True, sep="")
+		#print(json.dumps(dct) + "&", flush=True, sep="")
 		sys.stdout.flush()
 		dct = []
 
@@ -194,13 +194,13 @@ def createDCTableLeveln(table, levels, numChunks, numCols, numRows, nodeCount):
 
 			p = findPercent(nodeCount, sizeDC)
 			if(p - prevPercent >= 5):
-				print(json.dumps(dct) + "&", flush=True, sep="")
+				#print(json.dumps(dct) + "&", flush=True, sep="")
 				prevPercent = p
 				sys.stdout.flush()
 				dct = []
 
 	if(len(dct) > 0):
-		print(json.dumps(dct) + "&", flush=True, sep="")
+		#print(json.dumps(dct) + "&", flush=True, sep="")
 		sys.stdout.flush()
 		dct = []
 
@@ -252,12 +252,14 @@ def demo():
 
 	vals = cur.fetchall()
 	valsToPrint = []
+	#print(vals)
 
 	if(level > 1):
 		for i in vals:
 			cols = i[0][:numCols]
 			kids = [i for i in range(len(cols)) if(str(i) in columns and cols[i] == '1')]
 			chunk = int(i[0][-math.ceil(math.log(10, 2)):], 2)
+			#print(chunk == numChunk, level == len(kids), chunk, kids)
 			if(chunk == numChunk and level == len(kids)):
 				print(str(i[1])[:5] + "|" + str(kids) + "&")
 	else:
