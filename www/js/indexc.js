@@ -1,15 +1,14 @@
-var socket = io();
-var chart;
-var pgTimer, mdbTimer, cTimer, interTimer;
-var cols, rows, chunks;
-var conceptCols, conceptLevels, conceptThresh, conceptChunk;
-var counter = 0;
-var pgCache = 0, cCache = 0, mdbCache = 0;
-var treeData = [{name:"null"}];
-var conceptData;
+var socket = io(); //This is the Socket instance that connects to the Node middleware
+var chart; //This is the global variable for the charts
+var pgTimer, mdbTimer, cTimer, interTimer; //These are the global stopwatch variables.
+var cols, rows, chunks; //These are the global variables for the performance demo
+var pgCache = 0, cCache = 0, mdbCache = 0; //These are the global cache variables for the performance demo.
+var treeData = [{name:"null"}]; //This sets the TreeData for the Data Structure demo
 var tree, root, svg, iTree, duration, diagonal; //d3tree variables
+var conceptData; //This sets the global variable for the Concept Map
+var conceptCols, conceptLevels, conceptThresh, conceptChunk; //These are the universal variables for the concept map
 
-$(document).ready(function(){
+$(document).ready(function(){ //This sets the visual effects for the main page
 	$('.parallax').parallax();
 	$('.scrollspy').scrollSpy();
 });
@@ -18,12 +17,10 @@ function scrollHead() {
         scrollTop: $("#intro-cont").offset().top - 30
     }, 1000);
 }
-
-function showVal(param, val){
+function showVal(param, val){ //This displays the slider values in the performance demo
 	$("#" + param + "Val").html(val);
 }
-
-function enterTest(){
+function enterTest(){ //This opens when the performance demo is started - it closes and removes irrelevant stuff and starts the demo.
 
 	$('#splash-page').remove();
 	$('#test-container').show();
@@ -36,7 +33,7 @@ function enterTest(){
 	$('.slider').slider({full_width: true});
 
 }
-function startClick(){
+function startClick(){ //This starts when the start button is clicked, setting the timers, starting the processes (by sending data through Sockets), and starting the graph
 	
 	$('#pg-time span').remove();
 	$('#mdb-time span').remove();
@@ -51,15 +48,14 @@ function startClick(){
 	cTimer.start();
 
 	$('#start-btn').text('Reset');
-	$('#start-btn').attr('onclick', 'resetClick()');
-	//Turn into reset
+	$('#start-btn').attr('onclick', 'resetClick()'); //Turn into Reset Button
 
 	$('#perf-graph-row').show();
 	$('#perf-data').show();
 
 	$("input").prop('disabled', true);
 
-	$('html, body').animate({
+	$('html, body').animate({ //This scrolls down to the data
         scrollTop: $("#perf-data").offset().top - 30
     }, 1000);
 
@@ -69,7 +65,7 @@ function startClick(){
 
 	socket.emit('start', [rows, cols, chunks]);
 
-	chart = new CanvasJS.Chart("perfgraph", { 
+	chart = new CanvasJS.Chart("perfgraph", { //This starts the graph
 
 		axisX:{
 			minimum: 0,
@@ -114,38 +110,34 @@ function startClick(){
 	chart.render();	
 
 }
-function resetClick(){
+function resetClick(){ //This starts when the Reset button is clicked, setting the data back to zero, stopping the timers, and resetting the grpah
 
 	$('#start-btn').text('Start');
 	$('#start-btn').attr('onclick', 'startClick()');
 
 	$("input").prop('disabled', false);
 
-	pgTimer.reset();
-	mdbTimer.reset();
-	cTimer.reset();
 	pgTimer.stop();
 	mdbTimer.stop();
 	cTimer.stop();
+	pgTimer.reset(); //These reset and stop the timers
+	mdbTimer.reset();
+	cTimer.reset();
 
 	socket.emit('reset');
-
-	pgData = [0], mdbData = [0], cData = [0];
-	pgXPos = [0], mdbXPos = [0], cXPos = [0];
-	pgCache = 0, cCache = 0, mdbCache = 0;
 
 	$('#pg-prog').css('width', "0%");
 	$('#mdb-prog').css('width', "0%");
 	$('#c-prog').css('width', "0%");
 
-	chart.options.data[0].dataPoints = {x: 0, y: 0};
+	chart.options.data[0].dataPoints = {x: 0, y: 0}; //This resets the graph data
 	chart.options.data[1].dataPoints = {x: 0, y: 0};
 	chart.options.data[2].dataPoints = {x: 0, y: 0};
 
 	chart.render();
 
 }
-socket.on('pgNews', function (msg){
+socket.on('pgNews', function (msg){ //While the Performance Demo is running, this receives data from Node and updates the graph as data comes in
 
 	$('#pg-prog').css('width', String(msg['percent']) + "%");
 	
@@ -157,7 +149,7 @@ socket.on('pgNews', function (msg){
 	$('#pg-cache').html(pgCache);
 
 });
-socket.on('pgDone', function (msg){
+socket.on('pgDone', function (msg){ //This stops the updating and sets the graph to 100%
 
 	$('#pg-prog').css('width', "100%");
 	pgTimer.stop();
@@ -206,7 +198,7 @@ socket.on('cDone', function (msg){
 	chart.render();
 
 });
-function enterDemo(){
+function enterDemo(){ //This starts when the Data Structure Demo is started.
 
 	$('#splash-page').remove();
 	$('#test-container').remove();
@@ -217,9 +209,9 @@ function enterDemo(){
 	$('#inter-intro-modal').openModal();
 	$('.slider').slider({full_width: true});
 
-	rows = 100, cols = 6, chunks = 5;
+	rows = 100, cols = 6, chunks = 5; //The Data Structure is built on preset parameters
 
-	//PRE-CREATE CHUNKS (with levels) BUT DONT SHOW
+	//Pre-create chunks and levels, but hide.
 
 	for(i = 0; i < chunks; i++){
 		$('#inter-accordion').append(
@@ -236,7 +228,7 @@ function enterDemo(){
 
 	$('.collapsible').collapsible();
 
-	$('#circle-inter-prog').circleProgress({
+	$('#circle-inter-prog').circleProgress({ //This starts the circle progress bar
         value: 0,
         size: 80,
         fill: {
@@ -251,7 +243,7 @@ function enterDemo(){
 
 	interTimer.start();
 
-	// ************** Generate the d3tree diagram  *****************
+	// ************** Generate the d3tree diagram  ***************** This pre-generates the trees for the nodes without data.
 	var margin = {top: 40, right: 50, bottom: 20, left: 50},
 		width = 300 - margin.right - margin.left,
 		height = 300 - margin.top - margin.bottom;
@@ -279,10 +271,7 @@ function enterDemo(){
 	d3.select(self.frameElement).style("height", "300px");
 
 }
-
-socket.on('interDone', interDone);
-
-function interDone(){
+socket.on('interDone', function interDone(){ //This starts when it recieves the message that all the data has been sent for the Data Structure Demo.
 	interTimer.stop();
 	$("#inter-time").remove();
 	$('#circle-inter-prog').circleProgress('value', 1);
@@ -291,20 +280,18 @@ function interDone(){
 		$("#inter-wrap").removeClass("s9");
 		$("#inter-wrap").addClass("s12");
 	}, 1000);
-}
-
-socket.on('interNews', function (msg){
+});
+socket.on('interNews', function (msg){ //Everytime more of the Data is sent, this updates the progress bar, sets the data, and adds the collections.
 
 	$(".preloader-wrapper").hide();
 	$("#inter-accordion").show();
 
 	percent = msg[0];
-
 	js = msg[1];
 
 	$('#circle-inter-prog').circleProgress('value', percent/100);
 
-	for (var i = js.length - 1; i >= 0; i--) {
+	for (var i = js.length - 1; i >= 0; i--) { //This loops through all the sent data and builds the chunks and nodes.
 		console.log(js[i]);
 		console.log(js[i]['childs']);
 		$('#lichunk' + js[i]['chunk']).show();
@@ -319,8 +306,7 @@ socket.on('interNews', function (msg){
 
 	$('.collapsible').collapsible();
 
-
-	$(".node").heatcolor(
+	$(".node").heatcolor( //This heatmaps the node circles based on their values.
 		function() { return $(this).val(); },
 		{	lightness: 0,colorStyle: 'greentored' }
 	);
@@ -329,12 +315,10 @@ socket.on('interNews', function (msg){
 		interDone();
 		return;
 	}
-
 });
+function nodeClick(val, list){ //This fires when a Data Structure Node is clicked.
 
-function nodeClick(val, list){
-
-	if(val instanceof Array){
+	if(val instanceof Array){ //If the data is an array, it's a level 1 node, which means it'll need a table for data.
 		var tbl = "<table class='centered responsive-table'><thead><tr>"
 		+ "<th>Mode</th><th>Mean</th><th>Median</th><th>Standard Deviation</th><th>Variance</th>"
 		+ "</tr></thead><tbody><tr>"
@@ -346,33 +330,30 @@ function nodeClick(val, list){
 		tbl += "</tr></tbody></table>"
 		$("#node-modal p").html(tbl);
 		$("#node-modal h5").hide();
-	} else {
+	} else { //Otherwise, it just needs to show a single value
 		$("#node-modal p").html([val]);
 		$("#node-modal h5").show();
 	}
 
-	treeData[0] = {children:[]};
+	treeData[0] = {children:[]}; //This resets the data, just in case.
 
-	for (i = 0, len = list.length; i < len; ++i){
+	for (i = 0, len = list.length; i < len; ++i){ //This loops through the data and adds the tree values.
 
-		treeData[0].children[i] = {name: "col " + String(list[i])};
-		//treeData[0].children[i] = {name: "col " + Math.random()};
+		treeData[0].children[i] = {name: "Col " + String(list[i])};
 	}
 
 	root = treeData[0];
 	root.x0 = 0;
 	root.y0 = 0;
 
-	$('#node-modal #modalTree svg g').empty();
+	$('#node-modal #modalTree svg g').empty(); //This deletes the current tree, just in case.
 
-	update(root);
-
-	//console.log("treeData", treeData);
+	update(root); //This starts the function to reset the tree with the new data.
 
 	$('#node-modal').openModal();
 }
 
-function update(source) {
+function update(source) { //This function is taken from the d3 tutorial (and slightly modified) to show the tree
 
   // Compute the new tree layout.
   var nodes = tree.nodes(root).reverse(),
@@ -471,7 +452,9 @@ function click(d) {
   update(d);
 }
 
-function enterConcept() {
+function enterConcept() { //This starts when the Concept Map demo is entered, removing stuff, and adding the Concept Map stuff.
+
+	//NOTE: CONCEPT MAP IS A WORK IN PROGRESS!!
 
 	$('#splash-page').remove();
 	$('#test-container').remove();
@@ -482,7 +465,7 @@ function enterConcept() {
 	$('#concept-intro-modal').openModal();
 	$('.slider').slider({full_width: true});
 
-	conceptLevels = 5, conceptThresh = 0, conceptCols = ["0","1","2","3", "4"], conceptChunk = 1;
+	conceptLevels = 5, conceptThresh = 0, conceptCols = ["0","1","2","3", "4"], conceptChunk = 1; //This sets the default parameters for the Concept Map.
 
 	var html = '';
 
@@ -503,16 +486,14 @@ function enterConcept() {
 
 socket.on('conceptDone', function (msg){
 
-	console.log(msg);
+	//console.log(msg);
 	conceptData = msg;
-
-	console.log(conceptData);
-
+	//console.log(conceptData);
 	updateConcept();
 
 });
 
-function changeLevel(value){
+function changeLevel(value){ //The following functions fire when sliders are changed and rebuild the concept map as needed.
 
 	//TEMP
 	console.log(value);
@@ -569,7 +550,7 @@ function checkchanged(self) {
 
 }
 
-function updateConcept(){
+function updateConcept(){ //This is a d3 representation of a relational concept map with a few modifications.
 	// transform the data into a useful representation
 	// 1 is inner, 2, is outer
 
@@ -671,7 +652,6 @@ function updateConcept(){
 	  links: links
 	}
 
-	// sort the data -- TODO: have multiple sort options
 	outer = data.outer;
 	data.outer = Array(outer.length);
 
@@ -689,8 +669,6 @@ function updateConcept(){
 	  return a + b.related_links.length;
 	}, 0) / data.outer.length;
 
-	// from d3 colorbrewer: 
-	// This product includes color specifications and designs developed by Cynthia Brewer (http://colorbrewer.org/).
 	var colors = ["#00FF00", "#35FF00", "#58FF00", "#7CFF00", "#B0FF00", "#E5FF00", "#FFE400", "#FFAF00", "#FF6900", "#FF3400", "#FF0000"]
 	var color = d3.scale.linear()
 	  .domain([min, max])
@@ -912,57 +890,46 @@ function updateConcept(){
 	}
 }
 
-var Stopwatch = function(elem, options) {
-
+var Stopwatch = function(elem, options) { //Stopwatch object found online.
   var timer       = createTimer(),
       offset,
       clock,
       interval;
-
   // default options
   options = options || {};
   options.delay = options.delay || 1;
-
   // append elements     
   elem.appendChild(timer);
-
   // initialize
   reset();
-
   // private functions
   function createTimer() {
     return document.createElement("span");
   }
-
   function start() {
     if (!interval) {
       offset   = Date.now();
       interval = setInterval(update, options.delay);
     }
   }
-
   function stop() {
     if (interval) {
       clearInterval(interval);
       interval = null;
     }
   }
-
   function reset() {
     clock = 0;
     render();
   }
-
   function update() {
   	d = delta()
     clock += d;
     render();
   }
-
   function render() {
     timer.innerHTML = clock/1000; 
   }
-
   function delta() {
     var now = Date.now(),
         d   = now - offset;
@@ -970,7 +937,6 @@ var Stopwatch = function(elem, options) {
     offset = now;
     return d;
   }
-
   // public API
   this.start  = start;
   this.stop   = stop;
