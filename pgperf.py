@@ -233,15 +233,15 @@ def demo():
 	conn.commit()
 
 def exp():
-	
+	#name, numLevels, numChunks, numCols, numRows
 	if(sys.argv[1] == "setup"):
 		createDCTableSetup(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
 	elif(sys.argv[1] == "level1"):
 		createDCTableLevel1(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
 	elif(sys.argv[1] == "level2"):
-		createDCTableLevel2(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
+		createDCTableLevel2(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]), 0)
 	elif(sys.argv[1] == "leveln"):
-		createDCTableLeveln(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
+		createDCTableLeveln(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]), 0)
 
-#if __name__=="__main__": startTime = time.time(); exp()
-if __name__=="__main__": startTime = time.time(); demo()
+if __name__=="__main__": startTime = time.time(); exp()
+#if __name__=="__main__": startTime = time.time(); demo()
