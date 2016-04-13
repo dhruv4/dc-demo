@@ -207,7 +207,7 @@ def demo():
 	numChunks = int(sys.argv[3])
 	name = "demop" + str(random.randint(0, 12412099999999989))
 
-	conn = pg.connect(user="postgres", dbname="postgres")
+	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
 
 	createTable(cur, conn, name, numCols)
@@ -243,5 +243,5 @@ def exp():
 	elif(sys.argv[1] == "leveln"):
 		createDCTableLeveln(sys.argv[2], int(sys.argv[3]),int( sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]), 0)
 
-if __name__=="__main__": startTime = time.time(); exp()
-#if __name__=="__main__": startTime = time.time(); demo()
+#if __name__=="__main__": startTime = time.time(); exp()
+if __name__=="__main__": startTime = time.time(); demo()

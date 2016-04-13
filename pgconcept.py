@@ -275,7 +275,7 @@ def demo():
 
 def createConceptDCTable():
 	
-	conn = pg.connect(user="postgres", dbname="postgres")
+	conn = pg.connect(dbname="postgres")
 	cur = conn.cursor()
 
 	numCols = 5
