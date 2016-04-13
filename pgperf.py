@@ -207,7 +207,7 @@ def demo():
 	numChunks = int(sys.argv[3])
 	name = "demop" + str(random.randint(0, 12412099999999989))
 
-	conn = pg.connect(dbname="postgres")
+	conn = pg.connect(user="postgres", dbname="postgres")
 	cur = conn.cursor()
 
 	createTable(cur, conn, name, numCols)
