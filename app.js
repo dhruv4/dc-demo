@@ -21,7 +21,9 @@ http.listen(8000, function(){
 });
 
 io.on('connection', function(socket){ //This fires as soon as someone connects to the server with a browser
-    exec('sudo -u postgres /usr/lib/postgresql/9.1/bin/pg_ctl -D /var/lib/postgresql/9.1/main/ -o "-c config_file=/etc/postgresql/9.1/main/postgresql.conf" start');
+    //exec('sudo -u postgres /usr/lib/postgresql/9.1/bin/pg_ctl -D /var/lib/postgresql/9.1/main/ -o "-c config_file=/etc/postgresql/9.1/main/postgresql.conf" start');
+    exec('sudo service postgresql start');
+
     //postgres = sudo(['-u', 'postgres', '/usr/lib/postgresql/9.1/bin/pg_ctl', '-D', '/var/lib/postgresql/9.1/main/', 'start']);
     monet = spawn('/usr/local/bin/mserver5', ['--dbpath=/home/gupta/mydbfarm/test', '--set', 'merovingian_uri=mapi:monetdb://adama:50000/test', '--set', 'mapi_open=false', '--set', 'mapi_port=50000', '--set', 'mapi_usock=/home/gupta/mydbfarm/test/.mapi.sock', '--set', 'monet_vault_key=/home/gupta/mydbfarm/test/.vaultkey', '--set', 'gdk_nr_threads=1', '--set', 'max_clients=64', '--set', 'sql_optimizer=default_pipe', '--set', 'monet_daemon=yes']);
     
@@ -178,7 +180,8 @@ io.on('connection', function(socket){ //This fires as soon as someone connects t
 function exitHandler() { //Upon closing the app, this function is called to cleanly kill the monet and postgres instances.
 
     sudo(['pkill','mserver5']);
-    sudo(['pkill','postgres']);
+    //sudo(['pkill','postgres']);
+    exec('sudo service postgresql start');
     process.exit();
 }
 
