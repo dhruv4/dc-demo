@@ -298,5 +298,5 @@ def createConceptDCTable():
 
 	conn.commit()
 
-if __name__=="__main__": startTime = time.time(); createConceptDCTable()
-#if __name__=="__main__": startTime = time.time(); demo()
+#if __name__=="__main__": startTime = time.time(); createConceptDCTable()
+if __name__=="__main__": startTime = time.time(); demo()
