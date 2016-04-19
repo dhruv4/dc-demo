@@ -1,5 +1,5 @@
 ﻿/**
-* @preserve CanvasJS HTML5 & JavaScript Charts - v1.7.0 GA - http://canvasjs.com/ 
+* @preserve CanvasJS HTML5 & JavaScript Charts - v1.8.0 GA - http://canvasjs.com/ 
 * Copyright 2013 fenopix
 */
 
@@ -33,10 +33,14 @@
 			width: 500,
 			height: 400,
 			zoomEnabled: false,
+			zoomType: "x",
 			backgroundColor: "white",
 			theme: "theme1",
 			animationEnabled: false,
 			animationDuration: 1200,
+
+			dataPointWidth: null,
+			dataPointMinWidth: null,
 			dataPointMaxWidth: null,
 
 			colorSet: "colorSet1",
@@ -44,7 +48,10 @@
 			creditText: "CanvasJS.com",
 			interactivityEnabled: true,
 			exportEnabled: false,
-			exportFileName: "Chart"
+			exportFileName: "Chart",
+
+			rangeChanging: null,
+			rangeChanged: null
 		},
 
 		Title: {
@@ -138,7 +145,7 @@
 			cornerRadius: 5, // in pixels
 
 			fontSize: 14, // in pixels
-			fontColor: "#000000",
+			fontColor: null,
 			fontFamily: "Calibri, Arial, Georgia, serif;",
 			fontWeight: "normal", //normal, bold, bolder, lighter,
 			fontStyle: "italic"  // normal, italic, oblique
@@ -147,8 +154,11 @@
 		Axis: {
 			minimum: null, //Minimum value to be shown on the Axis
 			maximum: null, //Minimum value to be shown on the Axis
+			viewportMinimum: null,
+			viewportMaximum: null,
 			interval: null, // Interval for tick marks and grid lines
 			intervalType: null, //number, millisecond, second, minute, hour, day, month, year
+			//reversed: false,
 
 			title: null, // string
 			titleFontColor: "black",
@@ -191,7 +201,7 @@
 
 			margin: 2,
 
-			stripLines: [] // Just a placeholder. Does not have any effect on the actual number of striplines
+			stripLines: [] // Just a placeholder. Does not have any effect on the actual number of striplines      
 		},
 
 		StripLine: {
@@ -248,6 +258,9 @@
 			fillOpacity: null,
 
 			startAngle: 0,
+
+			radius: null,
+			innerRadius: null,
 
 			type: "column", //line, column, bar, area, scatter stackedColumn, stackedBar, stackedArea, stackedColumn100, stackedBar100, stackedArea100, pie, doughnut
 			xValueType: "number", //number, dateTime
@@ -313,7 +326,7 @@
 			resetText: "Reset",
 
 			menuText: "More Options",
-			saveJPGText: "Save as JPG",
+			saveJPGText: "Save as JPEG",
 			savePNGText: "Save as PNG",
 
 			days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
@@ -798,6 +811,10 @@
 		}
 		return -1;
 	};
+
+	function isNullOrUndefined(value) {
+		return value === null || typeof (value) === "undefined";
+	}
 
 	//IE8- Fix: indexOf is not supported in IE8- for arrays
 	function addArrayIndexOf(obj) {
@@ -1389,7 +1406,7 @@
 		if (!canvas || !format || !fileName)
 			return;
 
-		var fullFileName = fileName + "." + (format === "jpeg" ? "jpg" : format);
+		var fullFileName = fileName + "." + format;
 		var mimeType = "image/" + format;
 		var img = canvas.toDataURL(mimeType);
 		var saved = false;
@@ -1413,7 +1430,7 @@
 				intArray[i] = byteString.charCodeAt(i);
 			}
 
-			var blob = new Blob([buffer], { type: "image/" + format });
+			var blob = new Blob([intArray.buffer], { type: "image/" + format });
 
 			// Save the blob
 			try {
@@ -1477,10 +1494,10 @@
 			button.setAttribute("type", 'button');
 			button.style.position = "relative";
 			button.style.margin = "0px 0px 0px 0px";
-		    button.style.padding = "3px 4px 0px 4px";	
-		    button.style.cssFloat = "left";
+			button.style.padding = "3px 4px 0px 4px";
+			button.style.cssFloat = "left";
 			button.setAttribute("title", chart._cultureInfo[state + "Text"]);
-		    button.innerHTML = "<img style='height:16px;' src='" + base64Images[state].image + "' alt='" + chart._cultureInfo[state + "Text"] + "' />";
+			button.innerHTML = "<img style='height:16px;' src='" + base64Images[state].image + "' alt='" + chart._cultureInfo[state + "Text"] + "' />";
 		}
 	}
 
@@ -1537,16 +1554,20 @@
 			var defaults = defaultOptions[this._defaultsKey];
 
 			for (var prop in defaults) {
-				if (options && prop in options)
-					this[prop] = options[prop];
-				else if (currentThemeOptions && prop in currentThemeOptions)
-					this[prop] = currentThemeOptions[prop];
-				else this[prop] = defaults[prop];
 
-				//if (typeof this[prop] === "function") {
-				//    alert("function");
-				//    this[prop] = this[prop]();
-				//}
+				if (defaults.hasOwnProperty(prop)) {
+					if (options && prop in options)
+						this[prop] = options[prop];
+					else if (currentThemeOptions && prop in currentThemeOptions)
+						this[prop] = currentThemeOptions[prop];
+					else this[prop] = defaults[prop];
+
+					//if (typeof this[prop] === "function") {
+					//    alert("function");
+					//    this[prop] = this[prop]();
+					//}
+				}
+
 			}
 		}
 	};
@@ -1583,10 +1604,10 @@
 
 	//Stores values in _oldOptions so that it can be tracked for any changes
 	CanvasJSObject.prototype.trackChanges = function (option) {
-		if (!this._options._oldOptions)
-			this._options._oldOptions = {};
+		if (!this.sessionVariables)
+			throw "Session Variable Store not set";
 
-		this._options._oldOptions[option] = this._options[option];
+		this.sessionVariables[option] = this._options[option];
 	};
 
 	CanvasJSObject.prototype.isBeingTracked = function (option) {
@@ -1600,13 +1621,10 @@
 	};
 
 	CanvasJSObject.prototype.hasOptionChanged = function (option) {
-		if (!this._options._oldOptions)
-			this._options._oldOptions = {};
+		if (!this.sessionVariables)
+			throw "Session Variable Store not set";
 
-		//if (!this._options._oldOptions[option])
-		//    this._options._oldOptions[option] = null;
-
-		var hasChanged = !(this._options._oldOptions[option] === this._options[option]);
+		var hasChanged = !(this.sessionVariables[option] === this._options[option]);
 
 		return hasChanged;
 	};
@@ -1640,16 +1658,23 @@
 		this._eventListeners = [];
 	}
 
-	CanvasJSObject.prototype.dispatchEvent = function (eventName, eventParameter) {
-		if (!eventName || !this._eventListeners[eventName])
-			return;
+	CanvasJSObject.prototype.dispatchEvent = function (eventName, eventParameter, context) {
 
-		eventParameter = eventParameter || {};
+		//For Internal Events
+		if (eventName && this._eventListeners[eventName]) {
 
-		var listeners = this._eventListeners[eventName];
-		for (var i = 0; i < listeners.length; i++) {
+			eventParameter = eventParameter || {};
 
-			listeners[i].eventHandler.call(listeners[i].context, eventParameter);
+			var listeners = this._eventListeners[eventName];
+			for (var i = 0; i < listeners.length; i++) {
+
+				listeners[i].eventHandler.call(listeners[i].context, eventParameter);
+			}
+		}
+
+		//External Events do not require registering as the property name is suffient to fire the event.
+		if (typeof (this[eventName]) === "function") {
+			this[eventName].call(context || this.chart._publicChartReference, eventParameter);
 		}
 	}
 
@@ -1841,18 +1866,9 @@
 
 
 		this.sessionVariables = {
-			axisX: {
-				internalMinimum: null,
-				internalMaximum: null
-			},
-			axisY: {
-				internalMinimum: null,
-				internalMaximum: null
-			},
-			axisY2: {
-				internalMinimum: null,
-				internalMaximum: null
-			}
+			axisX: {},
+			axisY: {},
+			axisY2: {}
 		};
 	}
 
@@ -1865,7 +1881,11 @@
 		this.updateOption("width");
 		this.updateOption("height");
 
+		this.updateOption("dataPointWidth");
+		this.updateOption("dataPointMinWidth");
+		this.updateOption("dataPointMaxWidth");
 
+		this.updateOption("interactivityEnabled");
 		this.updateOption("theme");
 
 		if (this.updateOption("colorSet"))
@@ -1880,10 +1900,19 @@
 
 		this.updateOption("animationEnabled");
 		this.animationEnabled = this.animationEnabled && isCanvasSupported;
+		this.updateOption("animationDuration");
+
+		this.updateOption("rangeChanging");
+		this.updateOption("rangeChanged");
+
+		this.updateOption("exportEnabled");
+		this.updateOption("exportFileName");
+
+		this.updateOption("zoomType");
 
 		//Need to check this._options.zoomEnabled because this.zoomEnabled is used internally to keep track of state - and hence changes.
 		if (this._options.zoomEnabled) {
-        		  
+
 			if (!this._zoomButton) {
 
 				hide(this._zoomButton = document.createElement("button"));
@@ -1901,7 +1930,7 @@
 					} else {
 						_this.zoomEnabled = true;
 						_this.panEnabled = false;
-						
+
 						setButtonState(_this, _this._zoomButton, "pan");
 					}
 
@@ -1930,22 +1959,31 @@
 						_this.zoomEnabled = false;
 						_this.panEnabled = false;
 					}
+					//Reset axisX
+					if (_this.sessionVariables.axisX) {
+						_this.sessionVariables.axisX.newViewportMinimum = null;
+						_this.sessionVariables.axisX.newViewportMaximum = null;
+					}
 
-					if (_this._options.axisX && _this._options.axisX.minimum)
-						_this.sessionVariables.axisX.internalMinimum = _this._options.axisX.minimum;
-					else
-						_this.sessionVariables.axisX.internalMinimum = null;
+					//Reset axisY
+					if (_this.sessionVariables.axisY) {
+						_this.sessionVariables.axisY.newViewportMinimum = null;
+						_this.sessionVariables.axisY.newViewportMaximum = null;
+					}
 
-					if (_this._options.axisX && _this._options.axisX.maximum)
-						_this.sessionVariables.axisX.internalMaximum = _this._options.axisX.maximum;
-					else
-						_this.sessionVariables.axisX.internalMaximum = null;
-					
+					//Reset axisY2
+					if (_this.sessionVariables.axisY2) {
+						_this.sessionVariables.axisY2.newViewportMinimum = null;
+						_this.sessionVariables.axisY2.newViewportMaximum = null;
+					}
+
 					_this.resetOverlayedCanvas();
 
 					hide(_this._zoomButton, _this._resetButton);
 
+					_this._dispatchRangeEvent("rangeChanging", "reset");
 					_this.render();
+					_this._dispatchRangeEvent("rangeChanged", "reset");
 				});
 
 				this.overlaidCanvas.style.cursor = _this._defaultCursor;
@@ -1977,14 +2015,7 @@
 			this.panEnabled = false;
 		}
 
-		// Update this.exportFileName.
-		if (typeof (this._options.exportFileName) !== "undefined") {
-			this.exportFileName = this._options.exportFileName;
-		}
-		// Update this.exportEnabled.
-		if (typeof (this._options.exportEnabled) !== "undefined") {
-			this.exportEnabled = this._options.exportEnabled;
-		}
+
 
 		if (this._menuButton) {
 			if (this.exportEnabled)
@@ -2038,7 +2069,7 @@
 			}, true);
 
 			addEvent(exportOption, "click", function () {
-				exportCanvas(_this.canvas, "jpg", _this.exportFileName);
+				exportCanvas(_this.canvas, "jpeg", _this.exportFileName);
 				hide(_this._dropdownMenu);
 			}, true);
 
@@ -2146,6 +2177,7 @@
 
 		this.disableToolTip = false;
 
+		this._axes = [];
 
 		this.pieDoughnutClickHandler = null;
 		//this._touchCurrentCoordinates = null;
@@ -2227,7 +2259,12 @@
 			}
 
 			if ((dataSeries.type === "bubble" || dataSeries.type === "scatter") && dataSeries.dataPoints) {
-				dataSeries.dataPoints.sort(compareDataPointX)
+				if (dataSeries.dataPoints.some) {
+					if (dataSeries.dataPoints.some(function (element) { return element.x; }))
+						dataSeries.dataPoints.sort(compareDataPointX);
+				}
+				else
+					dataSeries.dataPoints.sort(compareDataPointX);
 			}
 
 			//if (dataSeries.markerBorderThickness === null && dataSeries.type === "scatter") {
@@ -2318,10 +2355,10 @@
 					if (!this.axisY) {
 
 						if (this.plotInfo.axisPlacement === "normal") {
-							this.axisY = new Axis(this, this._options.axisY, "axisY", "left");
+							this._axes.push(this.axisY = new Axis(this, this._options.axisY, "axisY", "left"));
 						}
 						else if (this.plotInfo.axisPlacement === "xySwapped") {
-							this.axisY = new Axis(this, this._options.axisY, "axisY", "bottom");
+							this._axes.push(this.axisY = new Axis(this, this._options.axisY, "axisY", "bottom"));
 						}
 					}
 					this.data[i].axisY = this.axisY;
@@ -2329,10 +2366,10 @@
 				else if (this.data[i].axisYType === "secondary") {
 					if (!this.axisY2) {
 						if (this.plotInfo.axisPlacement === "normal") {
-							this.axisY2 = new Axis(this, this._options.axisY2, "axisY", "right");
+							this._axes.push(this.axisY2 = new Axis(this, this._options.axisY2, "axisY", "right"));
 						}
 						else if (this.plotInfo.axisPlacement === "xySwapped") {
-							this.axisY2 = new Axis(this, this._options.axisY2, "axisY", "top");
+							this._axes.push(this.axisY2 = new Axis(this, this._options.axisY2, "axisY", "top"));
 						}
 					}
 					this.data[i].axisY = this.axisY2;
@@ -2340,15 +2377,46 @@
 
 				if (!this.axisX) {
 					if (this.plotInfo.axisPlacement === "normal") {
-						this.axisX = new Axis(this, this._options.axisX, "axisX", "bottom");
+						this._axes.push(this.axisX = new Axis(this, this._options.axisX, "axisX", "bottom"));
 					} else if (this.plotInfo.axisPlacement === "xySwapped") {
-						this.axisX = new Axis(this, this._options.axisX, "axisX", "left");
+						this._axes.push(this.axisX = new Axis(this, this._options.axisX, "axisX", "left"));
 					}
 				}
 
 				this.data[i].axisX = this.axisX;
 			}
 		}
+
+		//If Both Primary and Secondary axis are present, disable gridlines for one of them unless the user has set value for both
+		if (this.axisY && this.axisY2) {
+			if (this.axisY.gridThickness > 0 && typeof (this.axisY2._options.gridThickness) === "undefined")
+				this.axisY2.gridThickness = 0;
+			else if (this.axisY2.gridThickness > 0 && typeof (this.axisY._options.gridThickness) === "undefined")
+				this.axisY.gridThickness = 0;
+		}
+
+
+		//Show toolBar when viewportMinimum/viewportMaximum are set
+		var showToolBar = false;
+		if (this._axes.length > 0 && (this.zoomEnabled || this.panEnabled)) {
+			for (var i = 0; i < this._axes.length; i++) {
+				if (this._axes[i].viewportMinimum !== null || this._axes[i].viewportMaximum !== null) {
+					showToolBar = true;
+					break;
+				}
+			}
+		}
+
+		if (showToolBar) {
+			show(this._zoomButton, this._resetButton);
+		} else {
+			hide(this._zoomButton, this._resetButton);
+			if (this._options.zoomEnabled) {
+				this.zoomEnabled = true;
+				this.panEnabled = false;
+			}
+		}
+
 
 		this._processData();// Categorises the dataSeries and calculates min, max and other values
 
@@ -2402,8 +2470,7 @@
 			return;
 		}
 
-		var index = 0;
-		for (index in plotAreaElements) {
+		for (var index = 0; index < plotAreaElements.length; index++) {
 			plotAreaElements[index].render();
 		}
 
@@ -2752,8 +2819,11 @@
 
 			if (dataSeries.axisPlacement === "normal" || dataSeries.axisPlacement === "xySwapped") {
 
-				var plotAreaXMin = this.sessionVariables.axisX.internalMinimum ? this.sessionVariables.axisX.internalMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
-				var plotAreaXMax = this.sessionVariables.axisX.internalMaximum ? this.sessionVariables.axisX.internalMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
+				var plotAreaXMin = this.sessionVariables.axisX.newViewportMinimum ? this.sessionVariables.axisX.newViewportMinimum : (this._options.axisX && this._options.axisX.viewportMinimum) ?
+					this._options.axisX.viewportMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
+
+				var plotAreaXMax = this.sessionVariables.axisX.newViewportMaximum ? this.sessionVariables.axisX.newViewportMaximum : (this._options.axisX && this._options.axisX.viewportMaximum) ?
+					this._options.axisX.viewportMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
 			}
 
 
@@ -2795,6 +2865,15 @@
 
 					if (axisXDataInfo.minDiff > xDiff && xDiff !== 0) {
 						axisXDataInfo.minDiff = xDiff;
+					}
+
+					if (dataPointY !== null && dataSeries.dataPoints[i - 1].y !== null) {
+						var yDiff = dataPointY - dataSeries.dataPoints[i - 1].y;
+						yDiff < 0 && (yDiff = yDiff * -1); //If Condition shortcut
+
+						if (axisYDataInfo.minDiff > yDiff && yDiff !== 0) {
+							axisYDataInfo.minDiff = yDiff;
+						}
 					}
 				}
 
@@ -2855,6 +2934,7 @@
 		var dataPointYPositiveSums = [];
 		var dataPointYNegativeSums = [];
 
+		var firstSeriesMin = Infinity;
 		for (var j = 0; j < plotUnit.dataSeriesIndexes.length; j++) {
 			var dataSeries = this.data[plotUnit.dataSeriesIndexes[j]];
 			var i = 0;
@@ -2863,8 +2943,11 @@
 
 			if (dataSeries.axisPlacement === "normal" || dataSeries.axisPlacement === "xySwapped") {
 
-				var plotAreaXMin = this.sessionVariables.axisX.internalMinimum ? this.sessionVariables.axisX.internalMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
-				var plotAreaXMax = this.sessionVariables.axisX.internalMaximum ? this.sessionVariables.axisX.internalMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
+				var plotAreaXMin = this.sessionVariables.axisX.newViewportMinimum ? this.sessionVariables.axisX.newViewportMinimum : (this._options.axisX && this._options.axisX.viewportMinimum) ?
+					this._options.axisX.viewportMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
+
+				var plotAreaXMax = this.sessionVariables.axisX.newViewportMaximum ? this.sessionVariables.axisX.newViewportMaximum : (this._options.axisX && this._options.axisX.viewportMaximum) ?
+					this._options.axisX.viewportMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
 			}
 
 
@@ -2886,9 +2969,15 @@
 				else
 					dataPointX = dataSeries.dataPoints[i].x;
 
-				dataPointY = dataSeries.dataPoints[i].y;
+				if (!isNullOrUndefined(dataSeries.dataPoints[i].y)) {
+					dataPointY = dataSeries.dataPoints[i].y;
 
-
+					if (j === 0)
+						firstSeriesMin = Math.min(dataPointY, firstSeriesMin);
+				}
+				else {
+					dataPointY = 0;
+				}
 
 				if (dataPointX < axisXDataInfo.min)
 					axisXDataInfo.min = dataPointX;
@@ -2901,6 +2990,15 @@
 
 					if (axisXDataInfo.minDiff > xDiff && xDiff !== 0) {
 						axisXDataInfo.minDiff = xDiff;
+					}
+
+					if (dataPointY !== null && dataSeries.dataPoints[i - 1].y !== null) {
+						var yDiff = dataPointY - dataSeries.dataPoints[i - 1].y;
+						yDiff < 0 && (yDiff = yDiff * -1); //If Condition shortcut
+
+						if (axisYDataInfo.minDiff > yDiff && yDiff !== 0) {
+							axisYDataInfo.minDiff = yDiff;
+						}
 					}
 				}
 
@@ -2954,48 +3052,53 @@
 		}
 
 		for (i in dataPointYPositiveSums) {
+			if (dataPointYPositiveSums.hasOwnProperty(i)) {
+				if (isNaN(i)) {
+					continue;
+				}
+				var ySum = dataPointYPositiveSums[i];
 
-			if (isNaN(i)) {
-				continue;
+				if (ySum < axisYDataInfo.min)
+					axisYDataInfo.min = Math.min(ySum, firstSeriesMin);
+
+				if (ySum > axisYDataInfo.max)
+					axisYDataInfo.max = ySum;
+
+				if (i < axisXDataInfo.viewPortMin || i > axisXDataInfo.viewPortMax)
+					continue;
+
+				if (ySum < axisYDataInfo.viewPortMin)
+					axisYDataInfo.viewPortMin = Math.min(ySum, firstSeriesMin);
+				if (ySum > axisYDataInfo.viewPortMax)
+					axisYDataInfo.viewPortMax = ySum;
 			}
-			var ySum = dataPointYPositiveSums[i];
 
-			if (ySum < axisYDataInfo.min)
-				axisYDataInfo.min = ySum;
-
-			if (ySum > axisYDataInfo.max)
-				axisYDataInfo.max = ySum;
-
-			if (i < axisXDataInfo.viewPortMin || i > axisXDataInfo.viewPortMax)
-				continue;
-
-			if (ySum < axisYDataInfo.viewPortMin)
-				axisYDataInfo.viewPortMin = ySum;
-			if (ySum > axisYDataInfo.viewPortMax)
-				axisYDataInfo.viewPortMax = ySum;
 		}
 
 		for (i in dataPointYNegativeSums) {
 
-			if (isNaN(i)) {
-				continue;
+			if (dataPointYNegativeSums.hasOwnProperty(i)) {
+				if (isNaN(i)) {
+					continue;
+				}
+
+				var ySum = dataPointYNegativeSums[i];
+
+				if (ySum < axisYDataInfo.min)
+					axisYDataInfo.min = Math.min(ySum, firstSeriesMin);
+
+				if (ySum > axisYDataInfo.max)
+					axisYDataInfo.max = ySum;
+
+				if (i < axisXDataInfo.viewPortMin || i > axisXDataInfo.viewPortMax)
+					continue;
+
+				if (ySum < axisYDataInfo.viewPortMin)
+					axisYDataInfo.viewPortMin = Math.min(ySum, firstSeriesMin);
+				if (ySum > axisYDataInfo.viewPortMax)
+					axisYDataInfo.viewPortMax = ySum;
 			}
 
-			var ySum = dataPointYNegativeSums[i];
-
-			if (ySum < axisYDataInfo.min)
-				axisYDataInfo.min = ySum;
-
-			if (ySum > axisYDataInfo.max)
-				axisYDataInfo.max = ySum;
-
-			if (i < axisXDataInfo.viewPortMin || i > axisXDataInfo.viewPortMax)
-				continue;
-
-			if (ySum < axisYDataInfo.viewPortMin)
-				axisYDataInfo.viewPortMin = ySum;
-			if (ySum > axisYDataInfo.viewPortMax)
-				axisYDataInfo.viewPortMax = ySum;
 		}
 
 
@@ -3027,8 +3130,11 @@
 
 			if (dataSeries.axisPlacement === "normal" || dataSeries.axisPlacement === "xySwapped") {
 
-				var plotAreaXMin = this.sessionVariables.axisX.internalMinimum ? this.sessionVariables.axisX.internalMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
-				var plotAreaXMax = this.sessionVariables.axisX.internalMaximum ? this.sessionVariables.axisX.internalMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
+				var plotAreaXMin = this.sessionVariables.axisX.newViewportMinimum ? this.sessionVariables.axisX.newViewportMinimum : (this._options.axisX && this._options.axisX.viewportMinimum) ?
+					this._options.axisX.viewportMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
+
+				var plotAreaXMax = this.sessionVariables.axisX.newViewportMaximum ? this.sessionVariables.axisX.newViewportMaximum : (this._options.axisX && this._options.axisX.viewportMaximum) ?
+					this._options.axisX.viewportMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
 			}
 
 
@@ -3049,8 +3155,10 @@
 				}
 				else
 					dataPointX = dataSeries.dataPoints[i].x;
-
-				dataPointY = dataSeries.dataPoints[i].y;
+				if (!isNullOrUndefined(dataSeries.dataPoints[i].y))
+					dataPointY = dataSeries.dataPoints[i].y;
+				else
+					dataPointY = null;
 
 
 
@@ -3065,6 +3173,15 @@
 
 					if (axisXDataInfo.minDiff > xDiff && xDiff !== 0) {
 						axisXDataInfo.minDiff = xDiff;
+					}
+
+					if (!isNullOrUndefined(dataPointY) && dataSeries.dataPoints[i - 1].y !== null) {
+						var yDiff = dataPointY - dataSeries.dataPoints[i - 1].y;
+						yDiff < 0 && (yDiff = yDiff * -1); //If Condition shortcut
+
+						if (axisYDataInfo.minDiff > yDiff && yDiff !== 0) {
+							axisYDataInfo.minDiff = yDiff;
+						}
 					}
 				}
 
@@ -3102,7 +3219,7 @@
 
 				if (dataPointY >= 0) {
 					containsPositiveY = true;
-				} else {
+				} else if (dataPointY < 0) {//If dataPointY is undefied or null
 					containsNegativeY = true;
 				}
 
@@ -3117,15 +3234,16 @@
 
 
 		if (containsPositiveY && !containsNegativeY) {
-			axisYDataInfo.max = 99;
-			axisYDataInfo.min = 1;
+			axisYDataInfo.max = (!isNullOrUndefined(axisYDataInfo.viewPortMax)) ? Math.max(axisYDataInfo.viewPortMax, 99) : 99;
+			axisYDataInfo.min = (!isNullOrUndefined(axisYDataInfo.viewPortMin)) ? Math.min(axisYDataInfo.viewPortMin, 1) : 1;
 		} else if (containsPositiveY && containsNegativeY) {
-			axisYDataInfo.max = 99;
-			axisYDataInfo.min = -99;
+			axisYDataInfo.max = (!isNullOrUndefined(axisYDataInfo.viewPortMax)) ? Math.max(axisYDataInfo.viewPortMax, 99) : 99;
+			axisYDataInfo.min = (!isNullOrUndefined(axisYDataInfo.viewPortMin)) ? Math.min(axisYDataInfo.viewPortMin, -99) : -99;
 		} else if (!containsPositiveY && containsNegativeY) {
-			axisYDataInfo.max = -1;
-			axisYDataInfo.min = -99;
+			axisYDataInfo.max = (!isNullOrUndefined(axisYDataInfo.viewPortMax)) ? Math.max(axisYDataInfo.viewPortMax, -1) : -1;
+			axisYDataInfo.min = (!isNullOrUndefined(axisYDataInfo.viewPortMin)) ? Math.min(axisYDataInfo.viewPortMin, -99) : -99;
 		}
+		//Max of array to max
 
 		axisYDataInfo.viewPortMin = axisYDataInfo.min;
 		axisYDataInfo.viewPortMax = axisYDataInfo.max;
@@ -3156,8 +3274,11 @@
 
 			if (dataSeries.axisPlacement === "normal" || dataSeries.axisPlacement === "xySwapped") {
 
-				var plotAreaXMin = this.sessionVariables.axisX.internalMinimum ? this.sessionVariables.axisX.internalMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
-				var plotAreaXMax = this.sessionVariables.axisX.internalMaximum ? this.sessionVariables.axisX.internalMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
+				var plotAreaXMin = this.sessionVariables.axisX.newViewportMinimum ? this.sessionVariables.axisX.newViewportMinimum : (this._options.axisX && this._options.axisX.viewportMinimum) ?
+					this._options.axisX.viewportMinimum : (this._options.axisX && this._options.axisX.minimum) ? this._options.axisX.minimum : -Infinity;
+
+				var plotAreaXMax = this.sessionVariables.axisX.newViewportMaximum ? this.sessionVariables.axisX.newViewportMaximum : (this._options.axisX && this._options.axisX.viewportMaximum) ?
+					this._options.axisX.viewportMaximum : (this._options.axisX && this._options.axisX.maximum) ? this._options.axisX.maximum : Infinity;
 			}
 
 
@@ -3204,6 +3325,15 @@
 
 					if (axisXDataInfo.minDiff > xDiff && xDiff !== 0) {
 						axisXDataInfo.minDiff = xDiff;
+					}
+
+					if (dataPointY[0] !== null && dataSeries.dataPoints[i - 1].y[0] !== null) {
+						var yDiff = dataPointY[0] - dataSeries.dataPoints[i - 1].y[0];
+						yDiff < 0 && (yDiff = yDiff * -1); //If Condition shortcut
+
+						if (axisYDataInfo.minDiff > yDiff && yDiff !== 0) {
+							axisYDataInfo.minDiff = yDiff;
+						}
 					}
 				}
 
@@ -3432,6 +3562,32 @@
 		}
 	}
 
+	Chart.prototype._dispatchRangeEvent = function (eventName, triggerSource) {
+		var eventParameter = {};
+
+		eventParameter.chart = this._publicChartReference;
+		eventParameter.type = eventName;
+		eventParameter.trigger = triggerSource;
+
+		var axes = [];
+
+		if (this.axisX)
+			axes.push("axisX");
+		if (this.axisY)
+			axes.push("axisY");
+		if (this.axisY2)
+			axes.push("axisY2");
+
+		for (var i = 0; i < axes.length; i++) {
+			eventParameter[axes[i]] = {
+				viewportMinimum: this[axes[i]].sessionVariables.newViewportMinimum,
+				viewportMaximum: this[axes[i]].sessionVariables.newViewportMaximum
+			}
+		}
+
+		this.dispatchEvent(eventName, eventParameter, this._publicChartReference);
+	}
+
 	Chart.prototype._mouseEventHandler = function (ev) {
 
 		if (!this.interactivityEnabled)
@@ -3578,122 +3734,89 @@
 	Chart.prototype._plotAreaMouseDown = function (x, y) {
 		this.isDrag = true;
 
-		if (this.plotInfo.axisPlacement !== "none") {
-			this.dragStartPoint = { x: x, y: y, xMinimum: this.axisX.minimum, xMaximum: this.axisX.maximum };
-		} else {
-			this.dragStartPoint = { x: x, y: y };
-		}
-
+		this.dragStartPoint = { x: x, y: y };
 	}
 
 	Chart.prototype._plotAreaMouseUp = function (x, y) {
 
 		if (this.plotInfo.axisPlacement === "normal" || this.plotInfo.axisPlacement === "xySwapped") {
 			if (this.isDrag) {
+				var dragDelta = 0,
+					dragDeltaPY = y - this.dragStartPoint.y,
+					dragDeltaPX = x - this.dragStartPoint.x,
+					zoomPX = this.zoomType.indexOf("x") >= 0, //Whether to zoom horizontally
+					zoomPY = this.zoomType.indexOf("y") >= 0, //Whether to zoom vertically
+					reRender = false;
 
-				var dragDelta = 0;
-				var dragValue = 0;
-				var axisXProps = this.axisX.lineCoordinates;
+				this.resetOverlayedCanvas();
 
 				if (this.plotInfo.axisPlacement === "xySwapped") {
-					dragDelta = y - this.dragStartPoint.y;
-					dragValue = Math.abs(this.axisX.maximum - this.axisX.minimum) / axisXProps.height * dragDelta;
-				}
-				else {
-					dragDelta = this.dragStartPoint.x - x;
-					dragValue = Math.abs(this.axisX.maximum - this.axisX.minimum) / axisXProps.width * dragDelta;
+					var temp = zoomPY;
+					zoomPY = zoomPX;
+					zoomPX = temp;
 				}
 
-				if (Math.abs(dragDelta) > 2) {
+				if (this.panEnabled || this.zoomEnabled) {
 					if (this.panEnabled) {
 
-						var reRender = false;
-						var overFlow = 0;
+						var overflow = 0;
 
-						//If the user has panned beyond the minimum/maximum value of axisX, then take it back to minimum/maximum.
-						if (this.axisX.sessionVariables.internalMinimum < this.axisX._absoluteMinimum) {
+						for (var i = 0; i < this._axes.length; i++) {
+							var axis = this._axes[i];
 
-							overFlow = this.axisX._absoluteMinimum - this.axisX.sessionVariables.internalMinimum;
+							if (axis.viewportMinimum < axis.minimum) {
 
-							this.axisX.sessionVariables.internalMinimum += overFlow;
-							this.axisX.sessionVariables.internalMaximum += overFlow;
-							reRender = true;
-						} else if (this.axisX.sessionVariables.internalMaximum > this.axisX._absoluteMaximum) {
+								overflow = axis.minimum - axis.viewportMinimum;
 
-							overFlow = this.axisX.sessionVariables.internalMaximum - this.axisX._absoluteMaximum;
-							this.axisX.sessionVariables.internalMaximum -= overFlow;
-							this.axisX.sessionVariables.internalMinimum -= overFlow;
+								axis.sessionVariables.newViewportMinimum = axis.viewportMinimum + overflow;
+								axis.sessionVariables.newViewportMaximum = axis.viewportMaximum + overflow;
 
-							reRender = true;
+								reRender = true;
+							} else if (axis.viewportMaximum > axis.maximum) {
+
+								overflow = axis.viewportMaximum - axis.maximum;
+								axis.sessionVariables.newViewportMinimum = axis.viewportMinimum - overflow;
+								axis.sessionVariables.newViewportMaximum = axis.viewportMaximum - overflow;
+
+								reRender = true;
+							}
 						}
-						//}
 
+					}
+					else if (((!zoomPX || Math.abs(dragDeltaPX) > 2) && (!zoomPY || Math.abs(dragDeltaPY) > 2)) && this.zoomEnabled) {
 
-						//this.overlaidCanvas.style.cursor = this._defaultCursor;
-
-
-						if (reRender)
-							this.render();
-
-					} else if (this.zoomEnabled) {
-
-						this.resetOverlayedCanvas();
-
-						//alert("mouse UP");
 						if (!this.dragStartPoint)
 							return;
 
-						if (this.plotInfo.axisPlacement === "xySwapped") {
-							//In Pixels
-							var selectedRegion = { y1: Math.min(this.dragStartPoint.y, y), y2: Math.max(this.dragStartPoint.y, y) };
+						var selectedRegion = {
+							x1: zoomPX ? this.dragStartPoint.x : this.plotArea.x1,
+							y1: zoomPY ? this.dragStartPoint.y : this.plotArea.y1,
+							x2: zoomPX ? x : this.plotArea.x2,
+							y2: zoomPY ? y : this.plotArea.y2
+						};
 
-							if (Math.abs(selectedRegion.y1 - selectedRegion.y2) > 1) {
-								var axisXProps = this.axisX.lineCoordinates;
+						if (Math.abs(selectedRegion.x1 - selectedRegion.x2) > 2 && Math.abs(selectedRegion.y1 - selectedRegion.y2) > 2) {
 
-								var minX = this.axisX.maximum - (this.axisX.maximum - this.axisX.minimum) / axisXProps.height * (selectedRegion.y2 - axisXProps.y1);
-								var maxX = this.axisX.maximum - (this.axisX.maximum - this.axisX.minimum) / axisXProps.height * (selectedRegion.y1 - axisXProps.y1);
+							if (this._zoomPanToSelectedRegion(selectedRegion.x1, selectedRegion.y1, selectedRegion.x2, selectedRegion.y2)) {
 
-								minX = Math.max(minX, this.axisX.dataInfo.min);
-								maxX = Math.min(maxX, this.axisX.dataInfo.max);
+								reRender = true;
 
-								if (Math.abs(maxX - minX) > 2 * Math.abs(this.axisX.dataInfo.minDiff)) {
-
-									this.axisX.sessionVariables.internalMinimum = minX;
-									this.axisX.sessionVariables.internalMaximum = maxX;
-
-									this.render();
-								}
-							}
-						} else if (this.plotInfo.axisPlacement === "normal") {
-							var selectedRegion = { x1: Math.min(this.dragStartPoint.x, x), x2: Math.max(this.dragStartPoint.x, x) };
-
-							if (Math.abs(selectedRegion.x1 - selectedRegion.x2) > 1) {
-								var axisXProps = this.axisX.lineCoordinates;
-
-								var minX = (this.axisX.maximum - this.axisX.minimum) / axisXProps.width * (selectedRegion.x1 - axisXProps.x1) + this.axisX.minimum;
-								var maxX = (this.axisX.maximum - this.axisX.minimum) / axisXProps.width * (selectedRegion.x2 - axisXProps.x1) + this.axisX.minimum;
-
-								minX = Math.max(minX, this.axisX.dataInfo.min);
-								maxX = Math.min(maxX, this.axisX.dataInfo.max);
-
-								if (Math.abs(maxX - minX) > 2 * Math.abs(this.axisX.dataInfo.minDiff)) {
-
-									this.axisX.sessionVariables.internalMinimum = minX;
-									this.axisX.sessionVariables.internalMaximum = maxX;
-
-									this.render();
-								}
 							}
 						}
 					}
 
-					this._ignoreNextEvent = true;//Required so that click event doesn't fire after zooming into a section of the chart.
+					if (reRender) {
+						this._ignoreNextEvent = true;//Required so that click event doesn't fire after zooming into a section of the chart.
 
+						this._dispatchRangeEvent("rangeChanging", "zoom");
+						this.render();
+						this._dispatchRangeEvent("rangeChanged", "zoom");
 
-					if (this.zoomEnabled && this._zoomButton.style.display === "none") {
-						show(this._zoomButton, this._resetButton);
-						setButtonState(this, this._zoomButton, "pan");
-						setButtonState(this, this._resetButton, "reset");
+						if (reRender && this.zoomEnabled && this._zoomButton.style.display === "none") {
+							show(this._zoomButton, this._resetButton);
+							setButtonState(this, this._zoomButton, "pan");
+							setButtonState(this, this._resetButton, "reset");
+						}
 					}
 				}
 			}
@@ -3701,95 +3824,146 @@
 		}
 
 		this.isDrag = false;
-
-		//this.dragStartPoint = null;
 	}
 
 	Chart.prototype._plotAreaMouseMove = function (x, y) {
 		if (this.isDrag && this.plotInfo.axisPlacement !== "none") {
 
-			var dragDelta = 0;
-			var dragValue = 0;
-			var axisXProps = this.axisX.lineCoordinates;
+			var dragDeltaPX = 0,
+				dragDeltaPY = 0,
+				alpha = null,
+				selectedRegion = null,
+				zoomPX = this.zoomType.indexOf("x") >= 0, //Whether to zoom horizontally
+				zoomPY = this.zoomType.indexOf("y") >= 0, //Whether to zoom vertically
+				_this = this;
 
 			if (this.plotInfo.axisPlacement === "xySwapped") {
-				dragDelta = y - this.dragStartPoint.y;
-				dragValue = Math.abs(this.axisX.maximum - this.axisX.minimum) / axisXProps.height * dragDelta;
-			}
-			else {
-				dragDelta = this.dragStartPoint.x - x;
-				dragValue = Math.abs(this.axisX.maximum - this.axisX.minimum) / axisXProps.width * dragDelta;
+				var temp = zoomPY;
+				zoomPY = zoomPX;
+				zoomPX = temp;
 			}
 
-			if (Math.abs(dragDelta) > 2 && Math.abs(dragDelta) < 8 && (this.panEnabled || this.zoomEnabled)) {
+			dragDeltaPX = this.dragStartPoint.x - x;
+			dragDeltaPY = this.dragStartPoint.y - y;
+
+			if (Math.abs(dragDeltaPX) > 2 && Math.abs(dragDeltaPX) < 8 && (this.panEnabled || this.zoomEnabled)) {
 				this._toolTip.hide();
 			} else if (!this.panEnabled && !this.zoomEnabled) {
 				this._toolTip.mouseMoveHandler(x, y);
 			}
 
-			if (Math.abs(dragDelta) > 2 && (this.panEnabled || this.zoomEnabled)) {
+			if (((!zoomPX || Math.abs(dragDeltaPX) > 2) || (!zoomPY || Math.abs(dragDeltaPY) > 2)) && (this.panEnabled || this.zoomEnabled)) {
 				if (this.panEnabled) {
 
-					this.axisX.sessionVariables.internalMinimum = this.dragStartPoint.xMinimum + dragValue;
-					this.axisX.sessionVariables.internalMaximum = this.dragStartPoint.xMaximum + dragValue;
+					selectedRegion =
+						{
+							x1: zoomPX ? this.plotArea.x1 + dragDeltaPX : this.plotArea.x1,
+							y1: zoomPY ? this.plotArea.y1 + dragDeltaPY : this.plotArea.y1,
+							x2: zoomPX ? this.plotArea.x2 + dragDeltaPX : this.plotArea.x2,
+							y2: zoomPY ? this.plotArea.y2 + dragDeltaPY : this.plotArea.y2
+						};
 
-					var overFlow = 0;
+					if (this._zoomPanToSelectedRegion(selectedRegion.x1, selectedRegion.y1, selectedRegion.x2, selectedRegion.y2, true)) {
+						this._dispatchRangeEvent("rangeChanging", "pan");
+						this.render();
+						this._dispatchRangeEvent("rangeChanged", "pan");
 
-					// This is to stop the user from dragging chart beyond some limit (this.axisX._absoluteMinimum - this.axisX.interval)
-					if (this.axisX.sessionVariables.internalMinimum < this.axisX._absoluteMinimum - convertToNumber(this.axisX.interval, this.axisX.intervalType)) {
+						this.dragStartPoint.x = x;
+						this.dragStartPoint.y = y;
 
-						overFlow = (this.axisX._absoluteMinimum - convertToNumber(this.axisX.interval, this.axisX.intervalType)) - this.axisX.sessionVariables.internalMinimum;
-						this.axisX.sessionVariables.internalMinimum += overFlow;
-						this.axisX.sessionVariables.internalMaximum += overFlow;
-					} else if (this.axisX.sessionVariables.internalMaximum > this.axisX._absoluteMaximum + convertToNumber(this.axisX.interval, this.axisX.intervalType)) {
-						overFlow = this.axisX.sessionVariables.internalMaximum - (this.axisX._absoluteMaximum + convertToNumber(this.axisX.interval, this.axisX.intervalType));
-						this.axisX.sessionVariables.internalMaximum -= overFlow;
-						this.axisX.sessionVariables.internalMinimum -= overFlow;
+						//clearTimeout(this._panTimerId);
+						//this._panTimerId = setTimeout(function () {
+						//	_this._dispatchRangeEvent("rangeChanging", "pan");
+						//	_this.render();
+						//	_this._dispatchRangeEvent("rangeChanged", "pan");
+						//}, 0);
 					}
 
-					//this.dragStartPoint.x = x;
-
-					//this.render();
-					var _this = this;
-
-					clearTimeout(this._panTimerId);
-					this._panTimerId = setTimeout(function () {
-						_this.render();
-					}, 0);
-
 				} else if (this.zoomEnabled) {
-					var plotAreaBounds = this.plotArea;
 
 					this.resetOverlayedCanvas();
 
-					var alpha = this.overlaidCanvasCtx.globalAlpha;
+					alpha = this.overlaidCanvasCtx.globalAlpha;
 
 					this.overlaidCanvasCtx.globalAlpha = .7;
 					this.overlaidCanvasCtx.fillStyle = "#A0ABB8";
 
-					if (this.plotInfo.axisPlacement === "xySwapped") {
-						this.overlaidCanvasCtx.fillRect(plotAreaBounds.x1, this.dragStartPoint.y, plotAreaBounds.x2 - plotAreaBounds.x1, y - this.dragStartPoint.y);
-					}
-					else if (this.plotInfo.axisPlacement === "normal") {
-						this.overlaidCanvasCtx.fillRect(this.dragStartPoint.x, plotAreaBounds.y1, x - this.dragStartPoint.x, plotAreaBounds.y2 - plotAreaBounds.y1);
-					}
+					var rect = {
+						x1: zoomPX ? this.dragStartPoint.x : this.plotArea.x1,
+						y1: zoomPY ? this.dragStartPoint.y : this.plotArea.y1,
+						x2: zoomPX ? x - this.dragStartPoint.x : this.plotArea.x2 - this.plotArea.x1,
+						y2: zoomPY ? y - this.dragStartPoint.y : this.plotArea.y2 - this.plotArea.y1
+					};
+
+					this.overlaidCanvasCtx.fillRect(rect.x1, rect.y1, rect.x2, rect.y2);
 
 					this.overlaidCanvasCtx.globalAlpha = alpha;
 				}
 			}
 
-			//if (dragDelta > 5) {
-			//    this._toolTip.hide();
-			//    return;
-			//} else if (this._toolTip.enabled)
-			//    this._toolTip.mouseMoveHandler(x, y);
-
 		} else
 			this._toolTip.mouseMoveHandler(x, y);
 	}
 
-
 	//#endregion Events
+
+	//Sets the viewport range of Axis based on the given rect bounds (pixels). Also limits the zooming/panning based on axis bounds. Returns a boolean to indicate whether it was succesful or not based on the selected region.
+	Chart.prototype._zoomPanToSelectedRegion = function (px1, py1, px2, py2, keepAxisIndependent) {
+
+		keepAxisIndependent = keepAxisIndependent || false;
+
+		var zoomPX = this.zoomType.indexOf("x") >= 0, //Whether to zoom horizontally
+			zoomPY = this.zoomType.indexOf("y") >= 0, //Whether to zoom vertically
+			validRegion = false;
+
+		var axes = [], axesWithValidRange = [];
+		if (this.axisX && zoomPX)
+			axes.push(this.axisX);
+		if (this.axisY && zoomPY)
+			axes.push(this.axisY);
+		if (this.axisY2 && zoomPY)
+			axes.push(this.axisY2);
+
+		var params = [];
+
+		for (var i = 0; i < axes.length; i++) {
+			var axis = axes[i];
+			//var range = Math.abs(axis.viewportMaximum - axis.viewportMinimum);
+
+			var val1 = axis.convertPixelToValue({ x: px1, y: py1 });
+			var val2 = axis.convertPixelToValue({ x: px2, y: py2 });
+
+			if (val1 > val2) {
+				var temp = val2;
+				val2 = val1;
+				val1 = temp;
+			}
+
+			if (isFinite(axis.dataInfo.minDiff)) {
+				if (!(Math.abs(val2 - val1) < 3 * Math.abs(axis.dataInfo.minDiff)
+				|| (val1 < axis.minimum) || (val2 > axis.maximum))) {
+					axesWithValidRange.push(axis);
+					params.push({ val1: val1, val2: val2 });
+
+					validRegion = true;
+				} else if (!keepAxisIndependent) {
+					validRegion = false;
+					break;
+				}
+			}
+		}
+
+		if (validRegion) {
+			for (var i = 0; i < axesWithValidRange.length; i++) {
+				var axis = axesWithValidRange[i];
+				var param = params[i];
+
+				axis.setViewPortRange(param.val1, param.val2);
+			}
+		}
+
+		return validRegion;
+	}
 
 	Chart.prototype.preparePlotArea = function () {
 
@@ -3840,7 +4014,9 @@
 	}
 
 	Chart.prototype.getPixelCoordinatesOnPlotArea = function (x, y) {
-		return { x: this.axisX.getPixelCoordinatesOnAxis(x).x, y: this.axisY.getPixelCoordinatesOnAxis(y).y }
+		return {
+			x: this.axisX.getPixelCoordinatesOnAxis(x).x, y: this.axisY.getPixelCoordinatesOnAxis(y).y
+		}
 		//return { x: 5, y: 10 };
 	}
 
@@ -3877,14 +4053,18 @@
 			var maxWidth = getProperty("indexLabelMaxWidth", indexLabel.dataPoint, indexLabel.dataSeries);
 			var indexLabelWrap = getProperty("indexLabelWrap", indexLabel.dataPoint, indexLabel.dataSeries);
 
-			var percentAndTotal = { percent: null, total: null };
+			var percentAndTotal = {
+				percent: null, total: null
+			};
 			var formatterParameter = null;
 
 			if (indexLabel.dataSeries.type.indexOf("stacked") >= 0 || indexLabel.dataSeries.type === "pie" || indexLabel.dataSeries.type === "doughnut")
 				percentAndTotal = this.getPercentAndTotal(indexLabel.dataSeries, indexLabel.dataPoint);
 
 			if (indexLabel.dataSeries.indexLabelFormatter || indexLabel.dataPoint.indexLabelFormatter)
-				formatterParameter = { chart: this._options, dataSeries: indexLabel.dataSeries, dataPoint: indexLabel.dataPoint, index: indexLabel.indexKeyword, total: percentAndTotal.total, percent: percentAndTotal.percent };
+				formatterParameter = {
+					chart: this._publicChartReference, dataSeries: indexLabel.dataSeries, dataPoint: indexLabel.dataPoint, index: indexLabel.indexKeyword, total: percentAndTotal.total, percent: percentAndTotal.percent
+				};
 
 
 			var indexLabelText = indexLabel.dataPoint.indexLabelFormatter ? indexLabel.dataPoint.indexLabelFormatter(formatterParameter)
@@ -3925,17 +4105,25 @@
 
 			var textSize = textBlock.measureText();
 
-			//if (indexLabel.dataPoint.x < axisX.minimum || indexLabel.dataPoint.x > axisX.maximum || indexLabel.dataPoint.y < axisY.minimum || indexLabel.dataPoint.y > axisY.maximum)
+			//if (indexLabel.dataPoint.x < axisX.viewportMinimum || indexLabel.dataPoint.x > axisX.viewportMaximum || indexLabel.dataPoint.y < axisY.viewportMinimum || indexLabel.dataPoint.y > axisY.viewportMaximum)
 			//	continue;
 
 			if (chartTypeLower.indexOf("line") >= 0 || chartTypeLower.indexOf("area") >= 0
 					|| chartTypeLower.indexOf("bubble") >= 0 || chartTypeLower.indexOf("scatter") >= 0) {
 
-				if (indexLabel.dataPoint.x < axisX.minimum || indexLabel.dataPoint.x > axisX.maximum || indexLabel.dataPoint.y < axisY.minimum || indexLabel.dataPoint.y > axisY.maximum)
+				if (indexLabel.dataPoint.x < axisX.viewportMinimum || indexLabel.dataPoint.x > axisX.viewportMaximum || indexLabel.dataPoint.y < axisY.viewportMinimum || indexLabel.dataPoint.y > axisY.viewportMaximum)
+					continue;
+			}
+			else if (chartTypeLower.indexOf("column") >= 0) {
+				if (indexLabel.dataPoint.x < axisX.viewportMinimum || indexLabel.dataPoint.x > axisX.viewportMaximum || indexLabel.bounds.y1 > plotArea.y2 || indexLabel.bounds.y2 < plotArea.y1)
+					continue;
+			}
+			else if (chartTypeLower.indexOf("bar") >= 0) {
+				if (indexLabel.dataPoint.x < axisX.viewportMinimum || indexLabel.dataPoint.x > axisX.viewportMaximum || indexLabel.bounds.x1 > plotArea.x2 || indexLabel.bounds.x2 < plotArea.x1)
 					continue;
 			}
 			else {
-				if (indexLabel.dataPoint.x < axisX.minimum || indexLabel.dataPoint.x > axisX.maximum)
+				if (indexLabel.dataPoint.x < axisX.viewportMinimum || indexLabel.dataPoint.x > axisX.viewportMaximum)
 					continue;
 			}
 
@@ -4030,6 +4218,9 @@
 							y = Math.min(indexLabel.point.y + marginY, plotArea.y2 - visibleHeight - marginY);
 						}
 					}
+
+					// Make Sure that it does not overlap the axis line
+					y = Math.min(y, yMaxLimit - visibleHeight);
 				}
 			}
 			else {
@@ -4111,8 +4302,10 @@
 						//	y = Math.min(indexLabel.point.y + marginY, plotArea.y2 - visibleHeight - marginY);
 						//}
 					}
-				}
 
+					// Make Sure that it does not overlap the axis line
+					x = Math.max(x, xMinLimit);
+				}
 			}
 
 
@@ -4129,7 +4322,9 @@
 		}
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0, startTimePercent: .7 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0, startTimePercent: .7
+		};
 		return animationInfo;
 	}
 
@@ -4168,7 +4363,9 @@
 			}
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.strokeStyle = hexColor;
 			//ghostCtx.lineWidth = dataSeries.lineThickness;
@@ -4218,7 +4415,9 @@
 					y = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (dataPoints[i].y - plotUnit.axisY.conversionParameters.minimum) + .5) << 0;
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 
 
 					//dataSeries.noDataPointsInPlotArea++;
@@ -4287,7 +4486,9 @@
 							chartType: "line",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -4314,7 +4515,9 @@
 			ghostCtx.beginPath();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -4351,7 +4554,9 @@
 			}
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.strokeStyle = hexColor;
 			//ghostCtx.lineWidth = dataSeries.lineThickness;
@@ -4402,7 +4607,9 @@
 					y = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (dataPoints[i].y - plotUnit.axisY.conversionParameters.minimum) + .5) << 0;
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 
 
 					//dataSeries.noDataPointsInPlotArea++;
@@ -4472,7 +4679,9 @@
 							chartType: "stepLine",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -4497,7 +4706,9 @@
 			ghostCtx.beginPath();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -4517,8 +4728,12 @@
 			i1 = pointIndex === 0 ? 0 : pointIndex - 1;
 			i2 = pointIndex === points.length - 1 ? pointIndex : pointIndex + 1;
 
-			var drv1 = { x: (points[i2].x - points[i1].x) / tension, y: (points[i2].y - points[i1].y) / tension }
-			var cp1 = { x: points[pointIndex].x + drv1.x / 3, y: points[pointIndex].y + drv1.y / 3 }
+			var drv1 = {
+				x: (points[i2].x - points[i1].x) / tension, y: (points[i2].y - points[i1].y) / tension
+			}
+			var cp1 = {
+				x: points[pointIndex].x + drv1.x / 3, y: points[pointIndex].y + drv1.y / 3
+			}
 			bezierPoints[bezierPoints.length] = cp1;
 
 
@@ -4526,8 +4741,12 @@
 			i1 = pointIndex === 0 ? 0 : pointIndex - 1;
 			i2 = pointIndex === points.length - 1 ? pointIndex : pointIndex + 1;
 
-			var drv2 = { x: (points[i2].x - points[i1].x) / tension, y: (points[i2].y - points[i1].y) / tension }
-			var cp2 = { x: points[pointIndex].x - drv2.x / 3, y: points[pointIndex].y - drv2.y / 3 }
+			var drv2 = {
+				x: (points[i2].x - points[i1].x) / tension, y: (points[i2].y - points[i1].y) / tension
+			}
+			var cp2 = {
+				x: points[pointIndex].x - drv2.x / 3, y: points[pointIndex].y - drv2.y / 3
+			}
 			bezierPoints[bezierPoints.length] = cp2;
 
 			bezierPoints[bezierPoints.length] = points[i];
@@ -4568,7 +4787,9 @@
 			}
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.strokeStyle = hexColor;
 			//ghostCtx.lineWidth = dataSeries.lineThickness;
@@ -4613,10 +4834,14 @@
 					y = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (dataPoints[i].y - plotUnit.axisY.conversionParameters.minimum) + .5) << 0;
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 
 
-					pixels[pixels.length] = { x: x, y: y };
+					pixels[pixels.length] = {
+						x: x, y: y
+					};
 
 
 					//Add Markers
@@ -4651,7 +4876,9 @@
 							chartType: "spline",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -4713,7 +4940,9 @@
 		}
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -4852,16 +5081,29 @@
 
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : Math.min((this.width * .15), this.plotArea.width / plotUnit.plotType.totalDataSeries * .9) << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : Math.min((this.width * .15), this.plotArea.width / plotUnit.plotType.totalDataSeries * .9) << 0;
+
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth / plotUnit.plotType.totalDataSeries * .9;
-		} else if (barWidth < 1)
-			barWidth = 1;
+
 
 		ctx.save();
 		if (isCanvasSupported)
@@ -4947,7 +5189,9 @@
 					//}
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 
 					color = intToHexColorString(id);
 					if (isCanvasSupported)
@@ -4959,9 +5203,13 @@
 							chartType: "column",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x1 + (x2 - x1) / 2, y: dataPoints[i].y >= 0 ? y1 : y2 },
+							point: {
+								x: x1 + (x2 - x1) / 2, y: dataPoints[i].y >= 0 ? y1 : y2
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
-							bounds: { x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2) },
+							bounds: {
+								x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2)
+							},
 							color: color
 						});
 
@@ -4977,7 +5225,9 @@
 
 		//source and dest would be same when animation is not enabled
 		var animationBase = Math.min(yZeroToPixel, plotUnit.axisY.boundingRect.y2);
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.yScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.yScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase
+		};
 		return animationInfo;
 	}
 
@@ -4998,20 +5248,31 @@
 		var i = 0, x, y;
 		var dataPointX; //Used so that when dataPoint.x is a DateTime value, it doesn't get converted to number everytime it is accessed.
 
-		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.minimum) + .5) << 0;
+		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.viewportMinimum) + .5) << 0;
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.width * .15 << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : this.width * .15 << 0;
+
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth;
-		} else if (barWidth < 1)
-			barWidth = 1;
-
 
 
 		ctx.save();
@@ -5092,7 +5353,9 @@
 					//}
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 					color = intToHexColorString(id);
 
 					if (isCanvasSupported)
@@ -5105,9 +5368,13 @@
 							chartType: "stackedColumn",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: dataPoints[i].y >= 0 ? y1 : y2 },
+							point: {
+								x: x, y: dataPoints[i].y >= 0 ? y1 : y2
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
-							bounds: { x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2) },
+							bounds: {
+								x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2)
+							},
 							color: color
 						});
 
@@ -5123,7 +5390,9 @@
 
 		//source and dest would be same when animation is not enabled
 		var animationBase = Math.min(yZeroToPixel, plotUnit.axisY.boundingRect.y2);
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.yScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.yScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase
+		};
 		return animationInfo;
 	}
 
@@ -5144,19 +5413,30 @@
 		var i = 0, x, y;
 		var dataPointX; //Used so that when dataPoint.x is a DateTime value, it doesn't get converted to number everytime it is accessed.
 
-		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.minimum) + .5) << 0;
+		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.viewportMinimum) + .5) << 0;
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.width * .15 << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : this.width * .15 << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 		if (isCanvasSupported)
@@ -5241,7 +5521,9 @@
 					drawRect(ctx, x1, y1, x2, y2, color, 0, null, bevelEnabled && (dataPoints[i].y >= 0), (dataPoints[i].y < 0) && bevelEnabled, false, false, dataSeries.fillOpacity);
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 					color = intToHexColorString(id);
 
 					if (isCanvasSupported)
@@ -5254,9 +5536,13 @@
 							chartType: "stackedColumn100",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: dataPoints[i].y >= 0 ? y1 : y2 },
+							point: {
+								x: x, y: dataPoints[i].y >= 0 ? y1 : y2
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
-							bounds: { x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2) },
+							bounds: {
+								x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2)
+							},
 							color: color
 						});
 
@@ -5272,7 +5558,9 @@
 
 		//source and dest would be same when animation is not enabled
 		var animationBase = Math.min(yZeroToPixel, plotUnit.axisY.boundingRect.y2);
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.yScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.yScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase
+		};
 		return animationInfo;
 	}
 
@@ -5293,18 +5581,27 @@
 		//In case of Bar Chart, yZeroToPixel is x co-ordinate!
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : Math.min((this.height * .15), this.plotArea.height / plotUnit.plotType.totalDataSeries * .9) << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : Math.min((this.height * .15), this.plotArea.height / plotUnit.plotType.totalDataSeries * .9) << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		//var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
 
-		var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.height / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth / plotUnit.plotType.totalDataSeries * .9;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 
@@ -5377,7 +5674,9 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 					color = intToHexColorString(id);
 
 					if (isCanvasSupported)
@@ -5388,9 +5687,13 @@
 							chartType: "bar",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: dataPoints[i].y >= 0 ? x2 : x1, y: y1 + (y2 - y1) / 2 },
+							point: {
+								x: dataPoints[i].y >= 0 ? x2 : x1, y: y1 + (y2 - y1) / 2
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
-							bounds: { x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2 },
+							bounds: {
+								x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2
+							},
 							color: color
 						});
 				}
@@ -5404,7 +5707,9 @@
 
 		//source and dest would be same when animation is not enabled
 		var animationBase = Math.max(yZeroToPixel, plotUnit.axisX.boundingRect.x2);
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase
+		};
 		return animationInfo;
 	}
 
@@ -5425,19 +5730,30 @@
 		var i = 0, x, y;
 		var dataPointX; //Used so that when dataPoint.x is a DateTime value, it doesn't get converted to number everytime it is accessed.
 
-		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.minimum) + .5) << 0;
+		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.viewportMinimum) + .5) << 0;
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.height * .15 << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : this.height * .15 << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.height / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 
@@ -5515,7 +5831,9 @@
 					drawRect(ctx, x1, y1, x2, y2, color, 0, null, bevelEnabled, false, false, false, dataSeries.fillOpacity);
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 					color = intToHexColorString(id);
 
 					if (isCanvasSupported)
@@ -5526,9 +5844,13 @@
 							chartType: "stackedBar",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: dataPoints[i].y >= 0 ? x2 : x1, y: y },
+							point: {
+								x: dataPoints[i].y >= 0 ? x2 : x1, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
-							bounds: { x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2 },
+							bounds: {
+								x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2
+							},
 							color: color
 						});
 				}
@@ -5542,7 +5864,9 @@
 
 		//source and dest would be same when animation is not enabled
 		var animationBase = Math.max(yZeroToPixel, plotUnit.axisX.boundingRect.x2);
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase
+		};
 		return animationInfo;
 	}
 
@@ -5563,19 +5887,30 @@
 		var i = 0, x, y;
 		var dataPointX; //Used so that when dataPoint.x is a DateTime value, it doesn't get converted to number everytime it is accessed.
 
-		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.minimum) + .5) << 0;
+		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.viewportMinimum) + .5) << 0;
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.height * .15 << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : this.height * .15 << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.height / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.plotUnits.length * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 
@@ -5659,7 +5994,9 @@
 					drawRect(ctx, x1, y1, x2, y2, color, 0, null, bevelEnabled, false, false, false, dataSeries.fillOpacity);
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 					color = intToHexColorString(id);
 
 					if (isCanvasSupported)
@@ -5670,9 +6007,13 @@
 							chartType: "stackedBar100",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: dataPoints[i].y >= 0 ? x2 : x1, y: y },
+							point: {
+								x: dataPoints[i].y >= 0 ? x2 : x1, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
-							bounds: { x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2 },
+							bounds: {
+								x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2
+							},
 							color: color
 						});
 				}
@@ -5686,7 +6027,9 @@
 
 		//source and dest would be same when animation is not enabled
 		var animationBase = Math.max(yZeroToPixel, plotUnit.axisX.boundingRect.x2);
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xScaleAnimation, easingFunction: AnimationHelper.easing.easeOutQuart, animationBase: animationBase
+		};
 		return animationInfo;
 	}
 
@@ -5729,7 +6072,9 @@
 			var dataPoints = dataSeries.dataPoints;
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
@@ -5781,7 +6126,9 @@
 					if (isFirstDataPointInPlotArea || prevDataNull) {
 						ctx.beginPath();
 						ctx.moveTo(x, y);
-						startPoint = { x: x, y: y };
+						startPoint = {
+							x: x, y: y
+						};
 
 						if (isCanvasSupported) {
 							ghostCtx.beginPath();
@@ -5805,7 +6152,9 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 
 					//Render Marker
 					if (dataPoints[i].markerSize !== 0) {
@@ -5838,7 +6187,9 @@
 							chartType: "area",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -5865,12 +6216,12 @@
 			if (dataSeries.lineThickness > 0)
 				ctx.stroke();
 
-			if (plotUnit.axisY.minimum <= 0 && plotUnit.axisY.maximum >= 0) {
+			if (plotUnit.axisY.viewportMinimum <= 0 && plotUnit.axisY.viewportMaximum >= 0) {
 				baseY = yZeroToPixel;
 			}
-			else if (plotUnit.axisY.maximum < 0)
+			else if (plotUnit.axisY.viewportMaximum < 0)
 				baseY = axisYProps.y1;
-			else if (plotUnit.axisY.minimum > 0)
+			else if (plotUnit.axisY.viewportMinimum > 0)
 				baseY = axisXProps.y2;
 
 			ctx.lineTo(x, baseY);
@@ -5893,11 +6244,15 @@
 			ghostCtx.beginPath();
 			ghostCtx.moveTo(x, y);
 
-			startPoint = { x: x, y: y };
+			startPoint = {
+				x: x, y: y
+			};
 		}
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -5940,7 +6295,9 @@
 			var dataPoints = dataSeries.dataPoints;
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
@@ -5992,9 +6349,13 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 
-					pixels[pixels.length] = { x: x, y: y };
+					pixels[pixels.length] = {
+						x: x, y: y
+					};
 
 					//Render Marker
 					if (dataPoints[i].markerSize !== 0) {
@@ -6029,7 +6390,9 @@
 							chartType: "splineArea",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -6073,15 +6436,17 @@
 				if (dataSeries.lineThickness > 0)
 					ctx.stroke();
 
-				if (plotUnit.axisY.minimum <= 0 && plotUnit.axisY.maximum >= 0) {
+				if (plotUnit.axisY.viewportMinimum <= 0 && plotUnit.axisY.viewportMaximum >= 0) {
 					baseY = yZeroToPixel;
 				}
-				else if (plotUnit.axisY.maximum < 0)
+				else if (plotUnit.axisY.viewportMaximum < 0)
 					baseY = axisYProps.y1;
-				else if (plotUnit.axisY.minimum > 0)
+				else if (plotUnit.axisY.viewportMinimum > 0)
 					baseY = axisXProps.y2;
 
-				startPoint = { x: bp[0].x, y: bp[0].y };
+				startPoint = {
+					x: bp[0].x, y: bp[0].y
+				};
 
 				ctx.lineTo(bp[bp.length - 1].x, baseY);
 				ctx.lineTo(startPoint.x, baseY);
@@ -6101,7 +6466,9 @@
 		}
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -6144,7 +6511,9 @@
 			var dataPoints = dataSeries.dataPoints;
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
@@ -6200,7 +6569,9 @@
 					if (isFirstDataPointInPlotArea || prevDataNull) {
 						ctx.beginPath();
 						ctx.moveTo(x, y);
-						startPoint = { x: x, y: y };
+						startPoint = {
+							x: x, y: y
+						};
 
 						if (isCanvasSupported) {
 							ghostCtx.beginPath();
@@ -6228,7 +6599,9 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 
 					//Render Marker
 					if (dataPoints[i].markerSize !== 0) {
@@ -6261,7 +6634,9 @@
 							chartType: "stepArea",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -6287,12 +6662,12 @@
 			if (dataSeries.lineThickness > 0)
 				ctx.stroke();
 
-			if (plotUnit.axisY.minimum <= 0 && plotUnit.axisY.maximum >= 0) {
+			if (plotUnit.axisY.viewportMinimum <= 0 && plotUnit.axisY.viewportMaximum >= 0) {
 				baseY = yZeroToPixel;
 			}
-			else if (plotUnit.axisY.maximum < 0)
+			else if (plotUnit.axisY.viewportMaximum < 0)
 				baseY = axisYProps.y1;
-			else if (plotUnit.axisY.minimum > 0)
+			else if (plotUnit.axisY.viewportMinimum > 0)
 				baseY = axisXProps.y2;
 
 			ctx.lineTo(x, baseY);
@@ -6315,11 +6690,15 @@
 			ghostCtx.beginPath();
 			ghostCtx.moveTo(x, y);
 
-			startPoint = { x: x, y: y };
+			startPoint = {
+				x: x, y: y
+			};
 		}
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -6344,7 +6723,7 @@
 		var i = 0, x, y;
 		var dataPointX; //Used so that when dataPoint.x is a DateTime value, it doesn't get converted to number everytime it is accessed.
 
-		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.minimum) + .5) << 0;
+		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.viewportMinimum) + .5) << 0;
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
@@ -6404,7 +6783,9 @@
 
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
 
@@ -6430,7 +6811,9 @@
 					if (dataSeries.dataPointIndexes[dataPointX] >= 0)
 						dataPoint = dataPoints[dataSeries.dataPointIndexes[dataPointX]];
 					else
-						dataPoint = { x: dataPointX, y: 0 };
+						dataPoint = {
+							x: dataPointX, y: 0
+						};
 
 					if (dataPointX < plotUnit.axisX.dataInfo.viewPortMin || dataPointX > plotUnit.axisX.dataInfo.viewPortMax) {
 						continue;
@@ -6505,7 +6888,9 @@
 
 					if (dataSeries.dataPointIndexes[dataPointX] >= 0) {
 						var id = dataSeries.dataPointIds[dataSeries.dataPointIndexes[dataPointX]];
-						this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: dataSeries.dataPointIndexes[dataPointX], x1: x, y1: y };
+						this._eventManager.objectMap[id] = {
+							id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: dataSeries.dataPointIndexes[dataPointX], x1: x, y1: y
+						};
 					}
 
 					//Render Marker
@@ -6540,7 +6925,9 @@
 							chartType: "stackedArea",
 							dataPoint: dataPoint,
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -6588,7 +6975,9 @@
 			ghostCtx.restore();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -6614,12 +7003,12 @@
 		var dataPointX; //Used so that when dataPoint.x is a DateTime value, it doesn't get converted to number everytime it is accessed.
 
 
-		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.minimum) + .5) << 0;
+		//var yZeroToPixel = (axisYProps.y2 - axisYProps.height / rangeY * Math.abs(0 - plotUnit.axisY.viewportMinimum) + .5) << 0;
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
 		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.width * .15 << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) * .9) << 0;
+		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) * .9) << 0;
 
 		var ghostCtx = this._eventManager.ghostCtx;
 
@@ -6672,7 +7061,9 @@
 
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
 
@@ -6710,7 +7101,9 @@
 					if (dataSeries.dataPointIndexes[dataPointX] >= 0)
 						dataPoint = dataPoints[dataSeries.dataPointIndexes[dataPointX]];
 					else
-						dataPoint = { x: dataPointX, y: 0 };
+						dataPoint = {
+							x: dataPointX, y: 0
+						};
 
 					if (dataPointX < plotUnit.axisX.dataInfo.viewPortMin || dataPointX > plotUnit.axisX.dataInfo.viewPortMax) {
 						continue;
@@ -6788,7 +7181,9 @@
 
 					if (dataSeries.dataPointIndexes[dataPointX] >= 0) {
 						var id = dataSeries.dataPointIds[dataSeries.dataPointIndexes[dataPointX]];
-						this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: dataSeries.dataPointIndexes[dataPointX], x1: x, y1: y };
+						this._eventManager.objectMap[id] = {
+							id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: dataSeries.dataPointIndexes[dataPointX], x1: x, y1: y
+						};
 					}
 
 					//Render Marker
@@ -6822,7 +7217,9 @@
 							chartType: "stackedArea100",
 							dataPoint: dataPoint,
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: dataPoints[i].y >= 0 ? 1 : -1,
 							color: color
 						});
@@ -6869,7 +7266,9 @@
 			ghostCtx.restore();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -6893,7 +7292,7 @@
 
 		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.width * .15 << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
+		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
 
 
 		ctx.save();
@@ -6997,7 +7396,9 @@
 					ctx.globalAlpha = 1;
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y, size: markerSize };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y, size: markerSize
+					};
 					var markerColor = intToHexColorString(id);
 					//RenderHelper.drawMarker(x, y, this._eventManager.ghostCtx, markerType, markerSize, markerColor, markerColor, dataSeries.markerBorderThickness);
 					if (isCanvasSupported)
@@ -7010,9 +7411,13 @@
 							chartType: "bubble",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: 1,
-							bounds: { x1: x - markerProps.size / 2, y1: y - markerProps.size / 2, x2: x + markerProps.size / 2, y2: y + markerProps.size / 2 },
+							bounds: {
+								x1: x - markerProps.size / 2, y1: y - markerProps.size / 2, x2: x + markerProps.size / 2, y2: y + markerProps.size / 2
+							},
 							color: color
 						});
 					}
@@ -7026,7 +7431,9 @@
 			this._eventManager.ghostCtx.restore();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -7048,7 +7455,7 @@
 
 		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.width * .15 << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
+		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
 
 
 		ctx.save();
@@ -7126,7 +7533,9 @@
 
 					//Render ID on Ghost Canvas - for event handling
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y
+					};
 					var markerColor = intToHexColorString(id);
 
 					if (isCanvasSupported) {
@@ -7147,9 +7556,13 @@
 							chartType: "scatter",
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x, y: y },
+							point: {
+								x: x, y: y
+							},
 							direction: 1,
-							bounds: { x1: x - markerProps.size / 2, y1: y - markerProps.size / 2, x2: x + markerProps.size / 2, y2: y + markerProps.size / 2 },
+							bounds: {
+								x1: x - markerProps.size / 2, y1: y - markerProps.size / 2, x2: x + markerProps.size / 2, y2: y + markerProps.size / 2
+							},
 							color: color
 						});
 					}
@@ -7166,7 +7579,9 @@
 			this._eventManager.ghostCtx.restore();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -7187,16 +7602,28 @@
 
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : (this.width * .015);
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : (this.width * .015);
+
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) * .7) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) * .7) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 		if (isCanvasSupported)
@@ -7345,9 +7772,13 @@
 							chartType: dataSeries.type,
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
-							point: { x: x1 + (x2 - x1) / 2, y: y2 },
+							point: {
+								x: x1 + (x2 - x1) / 2, y: y2
+							},
 							direction: 1,
-							bounds: { x1: x1, y1: Math.min(y2, y3), x2: x2, y2: Math.max(y2, y3) },
+							bounds: {
+								x1: x1, y1: Math.min(y2, y3), x2: x2, y2: Math.max(y2, y3)
+							},
 							color: color
 						});
 
@@ -7362,7 +7793,9 @@
 			ghostCtx.restore();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -7382,18 +7815,29 @@
 
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : (this.width * .03);
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : (this.width * .03);
 		//var maxBarWidth = (this.width * .015);
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		//var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) * .9) << 0;
-		var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		//var barWidth = (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) * .9) << 0;
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.width / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth / plotUnit.plotType.totalDataSeries * .9;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 		if (isCanvasSupported)
@@ -7461,7 +7905,9 @@
 					}
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 
 					//var borderThickness = Math.max(1, (barWidth * .1 << 0));
 					var borderThickness = 0;
@@ -7480,9 +7926,13 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 0,
-							point: { x: x1 + (x2 - x1) / 2, y: dataPoints[i].y[1] >= dataPoints[i].y[0] ? y2 : y1 },
+							point: {
+								x: x1 + (x2 - x1) / 2, y: dataPoints[i].y[1] >= dataPoints[i].y[0] ? y2 : y1
+							},
 							direction: dataPoints[i].y[1] >= dataPoints[i].y[0] ? -1 : 1,
-							bounds: { x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2) },
+							bounds: {
+								x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2)
+							},
 							color: color
 						});
 
@@ -7491,9 +7941,13 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 1,
-							point: { x: x1 + (x2 - x1) / 2, y: dataPoints[i].y[1] >= dataPoints[i].y[0] ? y1 : y2 },
+							point: {
+								x: x1 + (x2 - x1) / 2, y: dataPoints[i].y[1] >= dataPoints[i].y[0] ? y1 : y2
+							},
 							direction: dataPoints[i].y[1] >= dataPoints[i].y[0] ? 1 : -1,
-							bounds: { x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2) },
+							bounds: {
+								x1: x1, y1: Math.min(y1, y2), x2: x2, y2: Math.max(y1, y2)
+							},
 							color: color
 						});
 
@@ -7509,7 +7963,9 @@
 
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -7530,18 +7986,29 @@
 		//In case of Bar Chart, yZeroToPixel is x co-ordinate!
 		var yZeroToPixel = (plotUnit.axisY.conversionParameters.reference + plotUnit.axisY.conversionParameters.pixelPerUnit * (0 - plotUnit.axisY.conversionParameters.minimum)) << 0;
 
-		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : Math.min((this.height * .15), this.plotArea.height / plotUnit.plotType.totalDataSeries * .9) << 0;
+		var minBarWidth = this.dataPointMinWidth ? this.dataPointMinWidth : this.dataPointWidth ? this.dataPointWidth : 1;
+		var maxBarWidth = this.dataPointMaxWidth ? this.dataPointMaxWidth : this.dataPointWidth ? this.dataPointWidth : Math.min((this.height * .15), this.plotArea.height / plotUnit.plotType.totalDataSeries * .9) << 0;
 		var xMinDiff = plotUnit.axisX.dataInfo.minDiff;
-		//var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
 
-		var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.maximum - plotUnit.axisX.minimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+		if (!isFinite(xMinDiff)) {
+			xMinDiff = Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum) * .3;
+		}
+
+		//var barWidth = (((plotArea.height / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / totalDataSeries * .9) << 0;
+
+		var barWidth = this.dataPointWidth ? this.dataPointWidth : (((plotArea.height / Math.abs(plotUnit.axisX.viewportMaximum - plotUnit.axisX.viewportMinimum)) * Math.abs(xMinDiff)) / plotUnit.plotType.totalDataSeries * .9) << 0;
+
+		if (this.dataPointMaxWidth && minBarWidth > maxBarWidth)
+			minBarWidth = Math.min(this.dataPointWidth ? this.dataPointWidth : Infinity, maxBarWidth);
+
+		if (!this.dataPointMaxWidth && this.dataPointMinWidth && maxBarWidth < minBarWidth)
+			maxBarWidth = Math.max(this.dataPointWidth ? this.dataPointWidth : -Infinity, minBarWidth);
+
+		if (barWidth < minBarWidth)
+			barWidth = minBarWidth;
 
 		if (barWidth > maxBarWidth)
 			barWidth = maxBarWidth;
-		else if (xMinDiff === Infinity) {
-			barWidth = maxBarWidth / plotUnit.plotType.totalDataSeries * .9;
-		} else if (barWidth < 1)
-			barWidth = 1;
 
 		ctx.save();
 
@@ -7613,7 +8080,9 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x1, y1: y1, x2: x2, y2: y2
+					};
 					color = intToHexColorString(id);
 
 					if (isCanvasSupported)
@@ -7627,9 +8096,13 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 0,
-							point: { x: dataPoints[i].y[1] >= dataPoints[i].y[0] ? x1 : x2, y: y1 + (y2 - y1) / 2 },
+							point: {
+								x: dataPoints[i].y[1] >= dataPoints[i].y[0] ? x1 : x2, y: y1 + (y2 - y1) / 2
+							},
 							direction: dataPoints[i].y[1] >= dataPoints[i].y[0] ? -1 : 1,
-							bounds: { x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2 },
+							bounds: {
+								x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2
+							},
 							color: color
 						});
 
@@ -7638,9 +8111,13 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 1,
-							point: { x: dataPoints[i].y[1] >= dataPoints[i].y[0] ? x2 : x1, y: y1 + (y2 - y1) / 2 },
+							point: {
+								x: dataPoints[i].y[1] >= dataPoints[i].y[0] ? x2 : x1, y: y1 + (y2 - y1) / 2
+							},
 							direction: dataPoints[i].y[1] >= dataPoints[i].y[0] ? 1 : -1,
-							bounds: { x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2 },
+							bounds: {
+								x1: Math.min(x1, x2), y1: y1, x2: Math.max(x1, x2), y2: y2
+							},
 							color: color
 						});
 					}
@@ -7654,7 +8131,9 @@
 			this._eventManager.ghostCtx.restore();
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.fadeInAnimation, easingFunction: AnimationHelper.easing.easeInQuad, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -7698,7 +8177,9 @@
 			var dataPoints = dataSeries.dataPoints;
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
@@ -7754,7 +8235,9 @@
 					if (isFirstDataPointInPlotArea || prevDataNull) {
 						ctx.beginPath();
 						ctx.moveTo(x, y1);
-						startPoint = { x: x, y: y1 };
+						startPoint = {
+							x: x, y: y1
+						};
 						closingPath = [];
 						closingPath.push({ x: x, y: y2 });
 
@@ -7781,7 +8264,9 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y1, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y1, y2: y2
+					};
 
 					//Render Marker
 					if (dataPoints[i].markerSize !== 0) {
@@ -7833,7 +8318,9 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 0,
-							point: { x: x, y: y1 },
+							point: {
+								x: x, y: y1
+							},
 							direction: dataPoints[i].y[0] <= dataPoints[i].y[1] ? -1 : 1,
 							color: color
 						});
@@ -7843,7 +8330,9 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 1,
-							point: { x: x, y: y2 },
+							point: {
+								x: x, y: y2
+							},
 							direction: dataPoints[i].y[0] <= dataPoints[i].y[1] ? 1 : -1,
 							color: color
 						});
@@ -7915,14 +8404,18 @@
 			ghostCtx.beginPath();
 			ghostCtx.moveTo(x, y1);
 
-			startPoint = { x: x, y: y1 };
+			startPoint = {
+				x: x, y: y1
+			};
 			closingPath = [];
 			closingPath.push({ x: x, y: y2 });
 		}
 
 		//ctx.beginPath();
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 
@@ -7965,7 +8458,9 @@
 			var dataPoints = dataSeries.dataPoints;
 
 			var seriesId = dataSeries.id;
-			this._eventManager.objectMap[seriesId] = { objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex };
+			this._eventManager.objectMap[seriesId] = {
+				objectType: "dataSeries", dataSeriesIndex: dataSeriesIndex
+			};
 
 			var hexColor = intToHexColorString(seriesId);
 			ghostCtx.fillStyle = hexColor;
@@ -8021,10 +8516,16 @@
 
 
 					var id = dataSeries.dataPointIds[i];
-					this._eventManager.objectMap[id] = { id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y1, y2: y2 };
+					this._eventManager.objectMap[id] = {
+						id: id, objectType: "dataPoint", dataSeriesIndex: dataSeriesIndex, dataPointIndex: i, x1: x, y1: y1, y2: y2
+					};
 
-					pixelsY1[pixelsY1.length] = { x: x, y: y1 };
-					pixelsY2[pixelsY2.length] = { x: x, y: y2 };
+					pixelsY1[pixelsY1.length] = {
+						x: x, y: y1
+					};
+					pixelsY2[pixelsY2.length] = {
+						x: x, y: y2
+					};
 
 					//Render Marker
 					if (dataPoints[i].markerSize !== 0) {
@@ -8080,7 +8581,9 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 0,
-							point: { x: x, y: y1 },
+							point: {
+								x: x, y: y1
+							},
 							direction: dataPoints[i].y[0] <= dataPoints[i].y[1] ? -1 : 1,
 							color: color
 						});
@@ -8090,7 +8593,9 @@
 							dataPoint: dataPoints[i],
 							dataSeries: dataSeries,
 							indexKeyword: 1,
-							point: { x: x, y: y2 },
+							point: {
+								x: x, y: y2
+							},
 							direction: dataPoints[i].y[0] <= dataPoints[i].y[1] ? 1 : -1,
 							color: color
 						});
@@ -8177,12 +8682,14 @@
 		}
 
 		//source and dest would be same when animation is not enabled
-		var animationInfo = { source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0 };
+		var animationInfo = {
+			source: ctx, dest: this.plotArea.ctx, animationCallback: AnimationHelper.xClipAnimation, easingFunction: AnimationHelper.easing.linear, animationBase: 0
+		};
 		return animationInfo;
 	}
 	//#region pieChart
 
-	var drawSegment = function (ctx, center, radius, color, type, theta1, theta2, fillOpacity) {
+	var drawSegment = function (ctx, center, radius, color, type, theta1, theta2, fillOpacity, percentInnerRadius) {
 
 		if (typeof (fillOpacity) === "undefined")
 			fillOpacity = 1;
@@ -8196,7 +8703,6 @@
 		}
 
 		ctx.save();
-
 		ctx.globalAlpha = fillOpacity;
 
 		if (type === "pie") {
@@ -8215,10 +8721,9 @@
 			ctx.fill();
 		}
 		else if (type === "doughnut") {
-			var widthPercentage = 0.60;
 			ctx.beginPath();
 			ctx.arc(center.x, center.y, radius, theta1, theta2, false);
-			ctx.arc(center.x, center.y, widthPercentage * radius, theta2, theta1, true);
+			ctx.arc(center.x, center.y, percentInnerRadius * radius, theta2, theta1, true);
 			ctx.closePath();
 			ctx.fillStyle = color;
 			ctx.strokeStyle = "white";
@@ -8237,6 +8742,20 @@
 		ctx.restore();
 	};
 
+	function convertPercentToValue(input, referenceValue) {
+		//input can be a number or string
+		if (input === null || typeof (input) === "undefined")
+			return referenceValue;
+
+		var result = parseFloat(input.toString()) * (input.toString().indexOf("%") >= 0 ? referenceValue / 100 : 1);
+
+		// limit to plot area
+		if (!isNaN(result) && result <= referenceValue && result >= 0)
+			return result;
+
+		return referenceValue;
+	}
+
 	Chart.prototype.renderPie = function (plotUnit) {
 
 		var _this = this;
@@ -8254,7 +8773,7 @@
 		var plotArea = this.plotArea;
 
 		//var maxFrame = isCanvasSupported ? 300 : 4;
-		var totalRecursions = 0;
+		//var totalRecursions = 0;
 		var dataPointEOs = []; //dataPoint Extension Objects Behaves like a storage place for all additional data relating to dataPoints. Requred because actual dataPoints should not be modified.
 
 		var minDistanceBetweenLabels = 2;
@@ -8262,20 +8781,36 @@
 		var poleAnglularDistance = (20 / 180) * Math.PI; //Anglular Distance from 90 & 270 to be considered pole
 		var precision = 6;
 
-		var center = { x: (plotArea.x2 + plotArea.x1) / 2, y: (plotArea.y2 + plotArea.y1) / 2 };
-		var outerRadius = dataSeries.indexLabelPlacement === "inside" ? (Math.min(plotArea.width, plotArea.height) * 0.92) / 2 : (Math.min(plotArea.width, plotArea.height) * 0.8) / 2;
-		var innerRadius = outerRadius * .6;
-
-		var indexLabelRadius = outerRadius * indexLabelRadiusToRadiusRatio;
-		var newPieRadius = outerRadius;
+		var center = {
+			x: (plotArea.x2 + plotArea.x1) / 2, y: (plotArea.y2 + plotArea.y1) / 2
+		};
 
 		var sum = 0;
+		var isIndexLabelPresent = false;
 		for (var j = 0; j < dataPoints.length; j++) {
 			sum += Math.abs(dataPoints[j].y);
+
+			if (!isIndexLabelPresent && typeof (dataPoints[j].indexLabel) !== "undefined" && dataPoints[j].indexLabel !== null && dataPoints[j].indexLabel.toString().length > 0)
+				isIndexLabelPresent = true;
+
+			if (!isIndexLabelPresent && typeof (dataPoints[j].label) !== "undefined" && dataPoints[j].label !== null && dataPoints[j].label.toString().length > 0)
+				isIndexLabelPresent = true;
 		}
 
 		if (sum === 0)
 			return;
+
+		isIndexLabelPresent = isIndexLabelPresent || (typeof (dataSeries.indexLabel) !== "undefined" && dataSeries.indexLabel !== null && dataSeries.indexLabel.toString().length > 0);
+
+		var outerRadius = dataSeries.indexLabelPlacement !== "inside" && isIndexLabelPresent ? (Math.min(plotArea.width, plotArea.height) * 0.75) / 2 : (Math.min(plotArea.width, plotArea.height) * .92) / 2;
+
+		if (dataSeries.radius)
+			outerRadius = convertPercentToValue(dataSeries.radius, outerRadius);
+
+
+		var innerRadius = (typeof dataSeries.innerRadius !== 'undefined' && dataSeries.innerRadius !== null) ? convertPercentToValue(dataSeries.innerRadius, outerRadius) : 0.7 * outerRadius;
+
+		var percentInnerRadius = Math.min(innerRadius / outerRadius, (outerRadius - 1) / outerRadius);
 
 		function initLabels() {
 
@@ -8293,16 +8828,22 @@
 				var dataPoint = dataPoints[j];
 				var id = dataSeries.dataPointIds[j];
 
-				var dataPointEO = { id: id, objectType: "dataPoint", dataPointIndex: j, dataSeriesIndex: 0 };
+				var dataPointEO = {
+					id: id, objectType: "dataPoint", dataPointIndex: j, dataSeriesIndex: 0
+				};
 				dataPointEOs.push(dataPointEO);
 
-				var percentAndTotal = { percent: null, total: null };
+				var percentAndTotal = {
+					percent: null, total: null
+				};
 				var formatterParameter = null;
 
 				percentAndTotal = _this.getPercentAndTotal(dataSeries, dataPoint);
 
 				if (dataSeries.indexLabelFormatter || dataPoint.indexLabelFormatter)
-					formatterParameter = { chart: _this._options, dataSeries: dataSeries, dataPoint: dataPoint, total: percentAndTotal.total, percent: percentAndTotal.percent };
+					formatterParameter = {
+						chart: _this._options, dataSeries: dataSeries, dataPoint: dataPoint, total: percentAndTotal.total, percent: percentAndTotal.percent
+					};
 
 				var indexLabelText = dataPoint.indexLabelFormatter ? dataPoint.indexLabelFormatter(formatterParameter)
                     : dataPoint.indexLabel ? _this.replaceKeywordsWithValue(dataPoint.indexLabel, dataPoint, dataSeries, j)
@@ -8313,13 +8854,16 @@
 				_this._eventManager.objectMap[id] = dataPointEO;
 
 				//dataPointEO.indexLabelText = j.toString() + " " + "kingfisher: " + dataPoint.y.toString();;
-				dataPointEO.center = { x: center.x, y: center.y };
+				dataPointEO.center = {
+					x: center.x, y: center.y
+				};
 				dataPointEO.y = dataPoint.y;
 				dataPointEO.radius = outerRadius;
+				dataPointEO.percentInnerRadius = percentInnerRadius;
 				dataPointEO.indexLabelText = indexLabelText;
 				dataPointEO.indexLabelPlacement = dataSeries.indexLabelPlacement;
 				dataPointEO.indexLabelLineColor = dataPoint.indexLabelLineColor ? dataPoint.indexLabelLineColor : dataSeries.indexLabelLineColor ? dataSeries.indexLabelLineColor : dataPoint.color ? dataPoint.color : dataSeries._colorSet[j % dataSeries._colorSet.length];
-				dataPointEO.indexLabelLineThickness = dataPoint.indexLabelLineThickness ? dataPoint.indexLabelLineThickness : dataSeries.indexLabelLineThickness;
+				dataPointEO.indexLabelLineThickness = (!isNullOrUndefined(dataPoint.indexLabelLineThickness)) ? dataPoint.indexLabelLineThickness : dataSeries.indexLabelLineThickness;
 				dataPointEO.indexLabelLineDashType = dataPoint.indexLabelLineDashType ? dataPoint.indexLabelLineDashType : dataSeries.indexLabelLineDashType;
 				dataPointEO.indexLabelFontColor = dataPoint.indexLabelFontColor ? dataPoint.indexLabelFontColor : dataSeries.indexLabelFontColor;
 				dataPointEO.indexLabelFontStyle = dataPoint.indexLabelFontStyle ? dataPoint.indexLabelFontStyle : dataSeries.indexLabelFontStyle;
@@ -8430,6 +8974,8 @@
 		function renderLabels() {
 
 			var ctx = _this.plotArea.ctx;
+			ctx.save();
+
 			ctx.fillStyle = "black";
 			ctx.strokeStyle = "grey";
 			var fontSize = 16;
@@ -8464,7 +9010,7 @@
 
 				dataPointEO.indexLabelTextBlock.y += dataPointEO.indexLabelTextBlock.height / 2;
 
-				if (dataPointEO.indexLabelPlacement !== "inside") {
+				if (dataPointEO.indexLabelPlacement !== "inside" && dataPointEO.indexLabelLineThickness > 0) {
 					var indexLabelLineStartX = dataPointEO.center.x + outerRadius * Math.cos(dataPointEO.midAngle);
 					var indexLabelLineStartY = dataPointEO.center.y + outerRadius * Math.sin(dataPointEO.midAngle);
 
@@ -8489,6 +9035,8 @@
 
 				ctx.lineJoin = "miter";
 			}
+
+			ctx.save();
 		}
 
 		function animate(fractionComplete) {
@@ -8516,7 +9064,7 @@
 				var color = dataPoints[i].color ? dataPoints[i].color : dataSeries._colorSet[i % dataSeries._colorSet.length];
 
 				if (endAngle > startAngle)
-					drawSegment(_this.plotArea.ctx, dataPointEOs[i].center, dataPointEOs[i].radius, color, dataSeries.type, startAngle, endAngle, dataSeries.fillOpacity);
+					drawSegment(_this.plotArea.ctx, dataPointEOs[i].center, dataPointEOs[i].radius, color, dataSeries.type, startAngle, endAngle, dataSeries.fillOpacity, dataPointEOs[i].percentInnerRadius);
 
 				if (shouldBreak)
 					break;
@@ -8559,7 +9107,8 @@
 					}
 
 					if (isInTransition) {
-						var entry = {};
+						var entry = {
+						};
 						entry.dataSeries = dataSeries;
 						entry.dataPoint = dataSeries.dataPoints[i];
 						entry.index = i;
@@ -8568,7 +9117,7 @@
 
 					var color = dataPoints[i].color ? dataPoints[i].color : dataSeries._colorSet[i % dataSeries._colorSet.length];
 
-					drawSegment(_this.plotArea.ctx, dataPointEOs[i].center, dataPointEOs[i].radius, color, dataSeries.type, startAngle, endAngle, dataSeries.fillOpacity);
+					drawSegment(_this.plotArea.ctx, dataPointEOs[i].center, dataPointEOs[i].radius, color, dataSeries.type, startAngle, endAngle, dataSeries.fillOpacity, dataPointEOs[i].percentInnerRadius);
 				}
 			}
 
@@ -8578,8 +9127,12 @@
 
 		function areDataPointsTooClose(first, second) {
 
-			var label1 = { x1: first.indexLabelTextBlock.x, y1: first.indexLabelTextBlock.y - first.indexLabelTextBlock.height / 2, x2: first.indexLabelTextBlock.x + first.indexLabelTextBlock.width, y2: first.indexLabelTextBlock.y + first.indexLabelTextBlock.height / 2 };
-			var label2 = { x1: second.indexLabelTextBlock.x, y1: second.indexLabelTextBlock.y - second.indexLabelTextBlock.height / 2, x2: second.indexLabelTextBlock.x + second.indexLabelTextBlock.width, y2: second.indexLabelTextBlock.y + second.indexLabelTextBlock.height / 2 };
+			var label1 = {
+				x1: first.indexLabelTextBlock.x, y1: first.indexLabelTextBlock.y - first.indexLabelTextBlock.height / 2, x2: first.indexLabelTextBlock.x + first.indexLabelTextBlock.width, y2: first.indexLabelTextBlock.y + first.indexLabelTextBlock.height / 2
+			};
+			var label2 = {
+				x1: second.indexLabelTextBlock.x, y1: second.indexLabelTextBlock.y - second.indexLabelTextBlock.height / 2, x2: second.indexLabelTextBlock.x + second.indexLabelTextBlock.width, y2: second.indexLabelTextBlock.y + second.indexLabelTextBlock.height / 2
+			};
 
 			if (label1.x2 < label2.x1 - indexLabelLineEdgeLength || label1.x1 > label2.x2 + indexLabelLineEdgeLength || label1.y1 > label2.y2 + indexLabelLineEdgeLength || label1.y2 < label2.y1 - indexLabelLineEdgeLength)
 				return false;
@@ -8590,8 +9143,12 @@
 		function getVerticalDistanceBetweenLabels(first, second) {
 
 			var distance = 0;
-			var label1 = { y: first.indexLabelTextBlock.y, y1: first.indexLabelTextBlock.y - first.indexLabelTextBlock.height / 2, y2: first.indexLabelTextBlock.y + first.indexLabelTextBlock.height / 2 };
-			var label2 = { y: second.indexLabelTextBlock.y, y1: second.indexLabelTextBlock.y - second.indexLabelTextBlock.height / 2, y2: second.indexLabelTextBlock.y + second.indexLabelTextBlock.height / 2 };
+			var label1 = {
+				y: first.indexLabelTextBlock.y, y1: first.indexLabelTextBlock.y - first.indexLabelTextBlock.height / 2, y2: first.indexLabelTextBlock.y + first.indexLabelTextBlock.height / 2
+			};
+			var label2 = {
+				y: second.indexLabelTextBlock.y, y1: second.indexLabelTextBlock.y - second.indexLabelTextBlock.height / 2, y2: second.indexLabelTextBlock.y + second.indexLabelTextBlock.height / 2
+			};
 
 			if (label2.y > label1.y) {
 				distance = label2.y1 - label1.y2;
@@ -8648,7 +9205,11 @@
 			return prevLabelIndex;
 		}
 
-		function rePositionLabels(dataPointIndex, offset) {
+		function rePositionLabels(dataPointIndex, offset, recursionCount) {
+			recursionCount = (recursionCount || 0) + 1;
+
+			if (recursionCount > 1000)
+				return 0;
 
 			offset = offset || 0;
 
@@ -8667,7 +9228,6 @@
 			if (dataPointIndex >= 0 && dataPointIndex < dataPoints.length) {
 
 				var dataPointEO = dataPointEOs[dataPointIndex];
-
 				//if (dataPointIndex === 0)
 				//	customPrompt(labelYMin.toFixed(2) + "; " + labelYMax.toFixed(2) + "; " + dataPointEO.indexLabelTextBlock.y.toFixed(2));
 
@@ -8741,6 +9301,7 @@
 						//dataPointEO.indexLabelTextBlock.x = newlabelX;
 
 					}
+
 				}
 
 				//var tempIndex = (dataPointIndex + dataPointEOs.length - 1) % dataPointEOs.length;
@@ -8777,8 +9338,8 @@
 
 						if (distanceFromOtherLabel - tempOffset < minDistanceBetweenLabels) {
 							otherDataPointOffset = -tempOffset;
-							totalRecursions++;
-							otherDataPointActualOffset = rePositionLabels(otherDataPointIndex, otherDataPointOffset);
+							//totalRecursions++;                            
+							otherDataPointActualOffset = rePositionLabels(otherDataPointIndex, otherDataPointOffset, recursionCount + 1);
 
 							//if (dataPointIndex < 4)
 							//	customPrompt(dataPointIndex + "; " + "offset: " + otherDataPointOffset);
@@ -8814,8 +9375,8 @@
 
 						if (distanceFromOtherLabel - tempOffset < minDistanceBetweenLabels) {
 							otherDataPointOffset = tempOffset;
-							totalRecursions++;
-							otherDataPointActualOffset = rePositionLabels(otherDataPointIndex, otherDataPointOffset);
+							//totalRecursions++;                            
+							otherDataPointActualOffset = rePositionLabels(otherDataPointIndex, otherDataPointOffset, recursionCount + 1);
 
 							if (+otherDataPointActualOffset.toFixed(precision) < +otherDataPointOffset.toFixed(precision)) {
 
@@ -8909,11 +9470,15 @@
 			var i = 0, j = 0;
 			var deltaR = 0;
 
+			var resizeFlag = true;
+
 			for (j = 0; j < 10 && (j < 1 || deltaR > 0) ; j++) {
 
-				//console.log(j);
-				outerRadius -= deltaR;
-				//indexLabelRadius -= deltaR + deltaR;
+				if (dataSeries.radius || (!dataSeries.radius && typeof dataSeries.innerRadius !== 'undefined' && dataSeries.innerRadius !== null && outerRadius - deltaR <= innerRadius))
+					resizeFlag = false;
+
+				if (resizeFlag)
+					outerRadius -= deltaR;
 
 				deltaR = 0;
 
@@ -8929,6 +9494,7 @@
 
 						dataPointEO.indexLabelAngle = dataPointEO.midAngle;
 						dataPointEO.radius = outerRadius;
+						dataPointEO.percentInnerRadius = percentInnerRadius;
 						//dataPointEO.indexLabelFontSize = dataPoint.indexLabelFontSize ? dataPoint.indexLabelFontSize : dataSeries.indexLabelFontSize;
 					}
 
@@ -9055,52 +9621,58 @@
 					dataPointEO = dataPointEOs[i];
 
 					var size = dataPointEO.indexLabelTextBlock.measureText();
-
 					// To make sure that null text or empty strings don't affect the radius. Required when user is not showing any labels
 					if (size.height === 0 || size.width === 0)
 						continue;
 
-					var xOverFlow = 0;
+					var xOverflow = 0;
 					var xdr = 0;
 
 					if (dataPointEO.hemisphere === "right") {
-						xOverFlow = plotArea.x2 - (dataPointEO.indexLabelTextBlock.x + dataPointEO.indexLabelTextBlock.width + indexLabelLineEdgeLength);
-						xOverFlow *= -1;
+						xOverflow = plotArea.x2 - (dataPointEO.indexLabelTextBlock.x + dataPointEO.indexLabelTextBlock.width + indexLabelLineEdgeLength);
+						xOverflow *= -1;
 					} else {
-						xOverFlow = plotArea.x1 - (dataPointEO.indexLabelTextBlock.x - dataPointEO.indexLabelTextBlock.width - indexLabelLineEdgeLength);
+						xOverflow = plotArea.x1 - (dataPointEO.indexLabelTextBlock.x - dataPointEO.indexLabelTextBlock.width - indexLabelLineEdgeLength);
 					}
+					if (xOverflow > 0) {
+						if (!resizeFlag && dataPointEO.indexLabelText) {
+							var newIndexLabelMaxWidth = dataPointEO.hemisphere === "right" ? plotArea.x2 - dataPointEO.indexLabelTextBlock.x : dataPointEO.indexLabelTextBlock.x - plotArea.x1;
+							dataPointEO.indexLabelTextBlock.maxWidth * .3 > newIndexLabelMaxWidth ? dataPointEO.indexLabelText = "" : dataPointEO.indexLabelTextBlock.maxWidth = newIndexLabelMaxWidth * .85;
+							if (dataPointEO.indexLabelTextBlock.maxWidth * .3 < newIndexLabelMaxWidth) dataPointEO.indexLabelTextBlock.x -= dataPointEO.hemisphere === "right" ? 2 : -2;
+						}
 
-					if (xOverFlow > 0) {
 						if (Math.abs(dataPointEO.indexLabelTextBlock.y - dataPointEO.indexLabelTextBlock.height / 2 - center.y) < outerRadius
 							|| Math.abs(dataPointEO.indexLabelTextBlock.y + dataPointEO.indexLabelTextBlock.height / 2 - center.y) < outerRadius) {
 
-							xdr = xOverFlow / Math.abs(Math.cos(dataPointEO.indexLabelAngle));
+							xdr = xOverflow / Math.abs(Math.cos(dataPointEO.indexLabelAngle));
 
 							if (xdr > 9)
 								xdr = xdr * .3;
 
 							if (xdr > deltaR)
 								deltaR = xdr;
-
-						} else {
-
 						}
 					}
 
-					var yOverFlow = 0;
+					var yOverflow = 0;
 					var ydr = 0;
 
 					if (dataPointEO.indexLabelAngle > 0 && dataPointEO.indexLabelAngle < Math.PI) {
-						yOverFlow = plotArea.y2 - (dataPointEO.indexLabelTextBlock.y + dataPointEO.indexLabelTextBlock.height / 2 + 5);
-						yOverFlow *= -1;
+						yOverflow = plotArea.y2 - (dataPointEO.indexLabelTextBlock.y + dataPointEO.indexLabelTextBlock.height / 2 + 5);
+						yOverflow *= -1;
 					} else {
-						yOverFlow = plotArea.y1 - (dataPointEO.indexLabelTextBlock.y - dataPointEO.indexLabelTextBlock.height / 2 - 5);
+						yOverflow = plotArea.y1 - (dataPointEO.indexLabelTextBlock.y - dataPointEO.indexLabelTextBlock.height / 2 - 5);
 					}
 
-					if (yOverFlow > 0) {
+					if (yOverflow > 0) {
+						if (!resizeFlag && dataPointEO.indexLabelText) {
+							var positionMultiplier = dataPointEO.indexLabelAngle > 0 && dataPointEO.indexLabelAngle < Math.PI ? -1 : 1;
+							if (rePositionLabels(i, yOverflow * positionMultiplier) === 0)
+								rePositionLabels(i, 2 * positionMultiplier);
+						}
 						if (Math.abs(dataPointEO.indexLabelTextBlock.x - center.x) < outerRadius) {
 
-							ydr = yOverFlow / Math.abs(Math.sin(dataPointEO.indexLabelAngle));
+							ydr = yOverflow / Math.abs(Math.sin(dataPointEO.indexLabelAngle));
 
 							if (ydr > 9)
 								ydr = ydr * .3;
@@ -9108,19 +9680,12 @@
 							if (ydr > deltaR)
 								deltaR = ydr;
 
-						} else {
-
 						}
-					} else {
-						//if (i < 4)
-						//	customPrompt(i + "; " + center.y + "; " + dataPointEO.indexLabelTextBlock.y.toFixed(2));
 					}
 
 				}
 
 				function removeLabelsForSmallSegments(totalOverlap, startIndex, endIndex) {
-
-					//return;
 
 					var dpEOs = [];
 					var totalRemovedLabelHeight = 0;
@@ -9139,7 +9704,7 @@
 					for (i = 0; i < dpEOs.length; i++) {
 						var dpEO = dpEOs[i];
 
-						if (totalRemovedLabelHeight < totalOverlap) {
+						if (totalRemovedLabelHeight < totalOverlap * .7) {
 							totalRemovedLabelHeight += dpEO.indexLabelTextBlock.height;
 							dpEO.indexLabelTextBlock.text = "";
 							dpEO.indexLabelText = "";
@@ -9153,60 +9718,74 @@
 				//resetAnimationFrame(1);
 				//animate();
 				//window.alert("next??");
+				function skipLabels() {
+					var overlapStartIndex = -1;
+					var overlapEndIndex = -1;
+					var totalOverlap = 0;
+					var removeLabels = false;
 
-				var overlapStartIndex = -1;
-				var overlapEndIndex = -1;
-				var totalOverlap = 0;
+					for (var k = 0; k < dataPoints.length; k++) {
+						removeLabels = false;
+						currentDataPoint = dataPointEOs[k];
 
-				for (var k = 0; k < dataPoints.length; k++) {
-					currentDataPoint = dataPointEOs[k];
+						if (!currentDataPoint.indexLabelText)
+							continue;
 
-					if (!currentDataPoint.indexLabelText)
-						continue;
+						var nextLabelIndex = getNextLabelIndex(k);
+						if (nextLabelIndex === null)
+							continue;
 
-					var nextLabelIndex = getNextLabelIndex(k);
-					if (nextLabelIndex === null)
-						continue;
+						var nextDataPoint = dataPointEOs[nextLabelIndex];
 
-					var nextDataPoint = dataPointEOs[nextLabelIndex];
+						distanceFromNextLabel = 0;
 
-					distanceFromNextLabel = 0;
+						//if (nextDataPoint.indexLabelTextBlock.y > currentDataPoint.indexLabelTextBlock.y)
+						//	distanceFromNextLabel = (nextDataPoint.indexLabelTextBlock.y - (nextDataPoint.indexLabelTextBlock.height / 2)) - (currentDataPoint.indexLabelTextBlock.y + (currentDataPoint.indexLabelTextBlock.height / 2));
+						//else
+						//	distanceFromNextLabel = (currentDataPoint.indexLabelTextBlock.y - (currentDataPoint.indexLabelTextBlock.height / 2)) - (nextDataPoint.indexLabelTextBlock.y + (nextDataPoint.indexLabelTextBlock.height / 2));
 
-					//if (nextDataPoint.indexLabelTextBlock.y > currentDataPoint.indexLabelTextBlock.y)
-					//	distanceFromNextLabel = (nextDataPoint.indexLabelTextBlock.y - (nextDataPoint.indexLabelTextBlock.height / 2)) - (currentDataPoint.indexLabelTextBlock.y + (currentDataPoint.indexLabelTextBlock.height / 2));
-					//else
-					//	distanceFromNextLabel = (currentDataPoint.indexLabelTextBlock.y - (currentDataPoint.indexLabelTextBlock.height / 2)) - (nextDataPoint.indexLabelTextBlock.y + (nextDataPoint.indexLabelTextBlock.height / 2));
+						distanceFromNextLabel = getVerticalDistanceBetweenLabels(currentDataPoint, nextDataPoint);
 
-					distanceFromNextLabel = getVerticalDistanceBetweenLabels(currentDataPoint, nextDataPoint);
+						if (distanceFromNextLabel < 0 && areDataPointsTooClose(currentDataPoint, nextDataPoint)) {
+							//if (distanceFromNextLabel < 0 && areDataPointsTooClose(currentDataPoint, nextDataPoint) ) {
+							if (overlapStartIndex < 0)
+								overlapStartIndex = k;
 
-					if (distanceFromNextLabel < 0 && areDataPointsTooClose(currentDataPoint, nextDataPoint)) {
+							if (nextLabelIndex !== overlapStartIndex) {
+								overlapEndIndex = nextLabelIndex;
 
-						if (overlapStartIndex < 0)
-							overlapStartIndex = k;
+								totalOverlap += -distanceFromNextLabel;
+							}
 
-						if (nextLabelIndex !== overlapStartIndex)
-							overlapEndIndex = nextLabelIndex;
+							if (k % Math.max(dataPoints.length / 10, 3) === 0)
+								removeLabels = true;
 
-						totalOverlap += -distanceFromNextLabel;
+							//nextDataPoint.indexLabelText = "";
+							//nextDataPoint.indexLabelTextBlock.text = "";
+							//nextDataPoint.indexLabelTextBlock.measureText();
+						} else {
 
-						//nextDataPoint.indexLabelText = "";
-						//nextDataPoint.indexLabelTextBlock.text = "";
-						//nextDataPoint.indexLabelTextBlock.measureText();
-					} else {
+							removeLabels = true;
+						}
 
-						if (totalOverlap > 0) {
-							removeLabelsForSmallSegments(totalOverlap, overlapStartIndex, overlapEndIndex);
+						if (removeLabels) {
 
-							overlapStartIndex = -1;
-							overlapEndIndex = -1;
-							totalOverlap = 0;
+							if (totalOverlap > 0 && overlapStartIndex >= 0 && overlapEndIndex >= 0) {
+								removeLabelsForSmallSegments(totalOverlap, overlapStartIndex, overlapEndIndex);
+
+								overlapStartIndex = -1;
+								overlapEndIndex = -1;
+								totalOverlap = 0;
+							}
 						}
 					}
 
+					if (totalOverlap > 0)
+						removeLabelsForSmallSegments(totalOverlap, overlapStartIndex, overlapEndIndex);
 				}
 
-				if (totalOverlap > 0)
-					removeLabelsForSmallSegments(totalOverlap, overlapStartIndex, overlapEndIndex);
+				skipLabels();
+
 
 			}
 			//window.alert("next??");
@@ -9217,6 +9796,7 @@
 
 			//console.log("totalRecursions: " + totalRecursions);
 		}
+
 
 		this.pieDoughnutClickHandler = function (e) {
 
@@ -9256,6 +9836,9 @@
 		initLabels();
 
 		positionLabels();
+		positionLabels();
+		positionLabels();
+		positionLabels();
 
 		this.disableToolTip = true;
 		this._animator.animate(0, this.animatedRender ? this.animationDuration : 0, function (fractionComplete) {
@@ -9283,6 +9866,7 @@
 			if (_this._title) {
 				if (_this._title.dockInsidePlotArea || (_this._title.horizontalAlign === "center" && _this._title.verticalAlign === "center"))
 					_this._title.render();
+
 			}
 
 			if (_this.subtitles)
@@ -9481,7 +10065,9 @@
 		this._wrapText(this.ctx);
 		this._isDirty = false;
 
-		return { width: this.width, height: this.height }
+		return {
+			width: this.width, height: this.height
+		}
 	}
 
 	TextBlock.prototype._getLineWithWidth = function (text, width, clipWord) {
@@ -9489,7 +10075,9 @@
 		clipWord = clipWord || false;
 
 		if (!text)
-			return { text: "", width: 0 };
+			return {
+				text: "", width: 0
+			};
 
 		var textWidth = 0,
 			min = 0,
@@ -9533,7 +10121,9 @@
 			textWidth = this.ctx.measureText(tempText).width;
 		}
 
-		return { text: tempText, width: textWidth };
+		return {
+			text: tempText, width: textWidth
+		};
 	}
 
 	TextBlock.prototype._wrapText = function wrapText() {
@@ -9566,7 +10156,9 @@
 			}
 		}
 
-		this._wrappedText = { lines: lines, width: width, height: height };
+		this._wrappedText = {
+			lines: lines, width: width, height: height
+		};
 		this.width = width + this.padding * 2;
 		this.height = height + this.padding * 2;
 
@@ -9599,7 +10191,9 @@
 
 		this.width = null,//read only
 		this.height = null//read only
-		this.bounds = { x1: null, y1: null, x2: null, y2: null };
+		this.bounds = {
+			x1: null, y1: null, x2: null, y2: null
+		};
 	}
 
 	extend(Title, CanvasJSObject);
@@ -9731,7 +10325,9 @@
 			height: this.height + (position === "top" || position === "bottom" ? this.margin + containerMargin : 0)
 		});
 
-		this.bounds = { x1: left, y1: top, x2: left + this.width, y2: top + this.height };
+		this.bounds = {
+			x1: left, y1: top, x2: left + this.width, y2: top + this.height
+		};
 
 		this.ctx.textBaseline = "top";
 	}
@@ -9758,7 +10354,9 @@
 
 		this.width = null,//read only
 		this.height = null//read only
-		this.bounds = { x1: null, y1: null, x2: null, y2: null };
+		this.bounds = {
+			x1: null, y1: null, x2: null, y2: null
+		};
 	}
 
 	extend(Subtitle, CanvasJSObject);
@@ -9783,7 +10381,9 @@
 		this.height = 0,
 		this.orientation = null,
 		this.dataSeries = [];
-		this.bounds = { x1: null, y1: null, x2: null, y2: null };
+		this.bounds = {
+			x1: null, y1: null, x2: null, y2: null
+		};
 
 		if (typeof (this._options.fontSize) === "undefined") {
 			this.fontSize = this.chart.getAutoFontSize(this.fontSize);
@@ -9835,7 +10435,7 @@
 			if (dataSeries.type !== "pie" && dataSeries.type !== "doughnut" && dataSeries.type !== "funnel") {
 
 				var markerType = dataSeries.legendMarkerType ? dataSeries.legendMarkerType : (dataSeries.type === "line" || dataSeries.type === "stepLine" || dataSeries.type === "spline" || dataSeries.type === "scatter" || dataSeries.type === "bubble") && dataSeries.markerType ? dataSeries.markerType : DataSeries.getDefaultLegendMarker(dataSeries.type);
-				var legendText = dataSeries.legendText ? dataSeries.legendText : this.itemTextFormatter ? this.itemTextFormatter({ chart: this.chart, legend: this._options, dataSeries: dataSeries, dataPoint: null })
+				var legendText = dataSeries.legendText ? dataSeries.legendText : this.itemTextFormatter ? this.itemTextFormatter({ chart: this.chart._publicChartReference, legend: this._options, dataSeries: dataSeries, dataPoint: null })
 					: dataSeries.name;
 				var markerColor = dataSeries.legendMarkerColor ? dataSeries.legendMarkerColor : dataSeries.markerColor ? dataSeries.markerColor : dataSeries._colorSet[0];
 				var markerSize = (!dataSeries.markerSize && (dataSeries.type === "line" || dataSeries.type === "stepLine" || dataSeries.type === "spline")) ? 0 : this.lineHeight * .6;
@@ -9856,7 +10456,7 @@
 					var dataPoint = dataSeries.dataPoints[dataPointIndex];
 
 					var markerType = dataPoint.legendMarkerType ? dataPoint.legendMarkerType : dataSeries.legendMarkerType ? dataSeries.legendMarkerType : DataSeries.getDefaultLegendMarker(dataSeries.type);
-					var legendText = dataPoint.legendText ? dataPoint.legendText : dataSeries.legendText ? dataSeries.legendText : this.itemTextFormatter ? this.itemTextFormatter({ chart: this.chart, legend: this._options, dataSeries: dataSeries, dataPoint: dataPoint })
+					var legendText = dataPoint.legendText ? dataPoint.legendText : dataSeries.legendText ? dataSeries.legendText : this.itemTextFormatter ? this.itemTextFormatter({ chart: this.chart._publicChartReference, legend: this._options, dataSeries: dataSeries, dataPoint: dataPoint })
 						: dataPoint.name ? dataPoint.name : "DataPoint: " + (dataPointIndex + 1);
 					var markerColor = dataPoint.legendMarkerColor ? dataPoint.legendMarkerColor : dataSeries.legendMarkerColor ? dataSeries.legendMarkerColor : dataPoint.color ? dataPoint.color : dataSeries.color ? dataSeries.color : dataSeries._colorSet[dataPointIndex % dataSeries._colorSet.length];
 					var markerSize = this.lineHeight * .6;
@@ -9901,7 +10501,7 @@
 					textMaxWidth = maxWidth;
 				}
 			}
-			
+
 			markerSize = (markerSize === 0 ? this.lineHeight * .6 : markerSize);
 			textMaxWidth = textMaxWidth - (markerSize + this.horizontalSpacing * .1);
 
@@ -9940,7 +10540,9 @@
 					}
 
 					if (!row || row.width + Math.round(item.textBlock.width + this.horizontalSpacing * .1 + markerSize + (row.width === 0 ? 0 : (this.horizontalSpacing)) + ((item.chartType === "line" || item.chartType === "spline" || item.chartType === "stepLine") ? 2 * (this.lineHeight * .1) : 0)) > maxWidth) {
-						row = { items: [], width: 0 };
+						row = {
+							items: [], width: 0
+						};
 						rows.push(row);
 						this.height += columnHeight;
 						columnHeight = 0;
@@ -9980,7 +10582,9 @@
 					}
 
 					if (this.height <= maxHeight) {
-						row = { items: [], width: 0 };
+						row = {
+							items: [], width: 0
+						};
 						rows.push(row);
 					} else {
 						row = rows[rowIndex];
@@ -10126,7 +10730,9 @@
 
 		container.layoutManager.registerSpace(position, { width: this.width + 2 + 2, height: this.height + 5 + 5 });
 
-		this.bounds = { x1: left, y1: top, x2: left + this.width, y2: top + this.height };
+		this.bounds = {
+			x1: left, y1: top, x2: left + this.width, y2: top + this.height
+		};
 	}
 
 	//#endregion Legend
@@ -10143,9 +10749,9 @@
 
 	PlotArea.prototype.render = function () {
 		var freeSpace = this.chart.layoutManager.getFreeSpace();
-
 		this.ctx.fillStyle = "red";
 		this.ctx.fillRect(freeSpace.x1, freeSpace.y1, freeSpace.x2, freeSpace.y2);
+
 	}
 	//#endregion Class PlotArea
 
@@ -10161,7 +10767,9 @@
 		this.noDataPointsInPlotArea = 0;
 		//this.maxWidthInX = 0;
 		this.id = id;
-		this.chart._eventManager.objectMap[id] = { id: id, objectType: "dataSeries", dataSeriesIndex: index }
+		this.chart._eventManager.objectMap[id] = {
+			id: id, objectType: "dataSeries", dataSeriesIndex: index
+		}
 		this.dataPointIds = [];
 		this.plotUnit = [];
 
@@ -10237,7 +10845,9 @@
 
 		if (!this.dataPoints || this.dataPoints.length === 0) return null;
 
-		var searchResult = { dataPoint: null, distance: Infinity, index: NaN };
+		var searchResult = {
+			dataPoint: null, distance: Infinity, index: NaN
+		};
 		var dataPoint = null;
 
 		var j = 0;
@@ -10320,7 +10930,7 @@
 	// x & y should be in pixels. Can be used only after rendering the chart.
 	DataSeries.prototype.getDataPointAtXY = function (x, y, getClosest) {
 
-		if (!this.dataPoints || this.dataPoints.length === 0) return null;
+		if (!this.dataPoints || this.dataPoints.length === 0 || x < this.chart.plotArea.x1 || x > this.chart.plotArea.x2 || y < this.chart.plotArea.y1 || y > this.chart.plotArea.y2) return null;
 
 		getClosest = getClosest || false;
 		var results = [];
@@ -10476,7 +11086,7 @@
 						case "pie":
 						case "doughnut":
 							var center = visualInfo.center;
-							var innerRadius = this.type === "doughnut" ? .6 * visualInfo.radius : 0;
+							var innerRadius = this.type === "doughnut" ? visualInfo.percentInnerRadius * visualInfo.radius : 0;
 
 							distance = Math.sqrt(Math.pow(center.x - x, 2) + Math.pow(center.y - y, 2));
 							if (distance < visualInfo.radius && distance > innerRadius) {
@@ -10631,7 +11241,7 @@
 		this.ctx = chart.ctx;
 		this.maxWidth = 0;
 		this.maxHeight = 0;
-		this.intervalstartTimePercent = 0;
+		this.intervalStartPosition = 0;
 		this.labels = [];
 		this._labels = null;
 
@@ -10681,7 +11291,9 @@
 
 		this._position = position;
 
-		this.lineCoordinates = { x1: null, y1: null, x2: null, y2: null, width: null };//{x1:, y1:, x2:, y2:, width:}
+		this.lineCoordinates = {
+			x1: null, y1: null, x2: null, y2: null, width: null
+		};//{x1:, y1:, x2:, y2:, width:}
 		//
 		{
 			this.labelAngle = ((this.labelAngle % 360) + 360) % 360;
@@ -10704,18 +11316,38 @@
 		}
 
 		this._titleTextBlock = null;
-		this._absoluteMinimum = null;// Used to determine boundaries while Zooming/Panning
-		this._absoluteMaximum = null;// Used to determine boundaries while Zooming/Panning
 
-		if (this.hasOptionChanged("minimum"))
-			this.sessionVariables.internalMinimum = this.minimum;
+		if (this.hasOptionChanged("viewportMinimum") && this.viewportMinimum === null) {
+			this._options.viewportMinimum = undefined;
+			this.sessionVariables.viewportMinimum = null;
+		}
 
-		if (this.hasOptionChanged("maximum"))
-			this.sessionVariables.internalMaximum = this.maximum;
+		if (!this.hasOptionChanged("viewportMinimum") && !isNaN(this.sessionVariables.newViewportMinimum) && this.sessionVariables.newViewportMinimum !== null)
+			this.viewportMinimum = this.sessionVariables.newViewportMinimum;
+		else
+			this.sessionVariables.newViewportMinimum = null;
 
-		this.trackChanges("minimum");
-		this.trackChanges("maximum");
+
+		if (this.hasOptionChanged("viewportMaximum") && this.viewportMaximum === null) {
+			this._options.viewportMaximum = undefined;
+			this.sessionVariables.viewportMaximum = null;
+		}
+
+		if (!this.hasOptionChanged("viewportMaximum") && !isNaN(this.sessionVariables.newViewportMaximum) && this.sessionVariables.newViewportMaximum !== null)
+			this.viewportMaximum = this.sessionVariables.newViewportMaximum;
+		else
+			this.sessionVariables.newViewportMaximum = null;
+
+		if (this.minimum !== null && this.viewportMinimum !== null)
+			this.viewportMinimum = Math.max(this.viewportMinimum, this.minimum);
+
+		if (this.maximum !== null && this.viewportMaximum !== null)
+			this.viewportMaximum = Math.min(this.viewportMaximum, this.maximum);
+
+		this.trackChanges("viewportMinimum");
+		this.trackChanges("viewportMaximum");
 	}
+
 	extend(Axis, CanvasJSObject);
 
 	Axis.prototype.createLabels = function () {
@@ -10731,7 +11363,7 @@
 
 
 		if (this._position === "bottom" || this._position === "top") {
-			intervalInPixels = this.lineCoordinates.width / Math.abs(this.maximum - this.minimum) * this.interval;
+			intervalInPixels = this.lineCoordinates.width / Math.abs(this.viewportMaximum - this.viewportMinimum) * this.interval;
 
 			if (this.labelAutoFit) {
 				labelMaxWidth = typeof (this._options.labelMaxWidth) === "undefined" ? intervalInPixels * .9 >> 0 : this.labelMaxWidth;
@@ -10744,7 +11376,7 @@
 		}
 		else if (this._position === "left" || this._position === "right") {
 
-			intervalInPixels = this.lineCoordinates.height / Math.abs(this.maximum - this.minimum) * this.interval;
+			intervalInPixels = this.lineCoordinates.height / Math.abs(this.viewportMaximum - this.viewportMinimum) * this.interval;
 
 
 			if (this.labelAutoFit) {
@@ -10758,16 +11390,16 @@
 		}
 
 		if (this.type === "axisX" && this.chart.plotInfo.axisXValueType === "dateTime") {
-			endPoint = addToDateTime(new Date(this.maximum), this.interval, this.intervalType)
-			//endPoint = this.maximum;
+			endPoint = addToDateTime(new Date(this.viewportMaximum), this.interval, this.intervalType)
+			//endPoint = this.viewportMaximum;
 
-			for (i = this.intervalstartTimePercent; i < endPoint; addToDateTime(i, this.interval, this.intervalType)) {
-                 
+			for (i = this.intervalStartPosition; i < endPoint; addToDateTime(i, this.interval, this.intervalType)) {
+
 				//var text = dateFormat(i, this.valueFormatString);
 				var timeInMilliseconds = i.getTime();
-				var text = this.labelFormatter ? this.labelFormatter({ chart: this.chart, axis: this._options, value: i, label: this.labels[i] ? this.labels[i] : null })
+				var text = this.labelFormatter ? this.labelFormatter({ chart: this.chart._publicChartReference, axis: this._options, value: i, label: this.labels[i] ? this.labels[i] : null })
 					: this.type === "axisX" && this.labels[timeInMilliseconds] ? this.labels[timeInMilliseconds] : dateFormat(i, this.valueFormatString, this.chart._cultureInfo);
-				
+
 				textBlock = new TextBlock(this.ctx, {
 					x: 0,
 					y: 0,
@@ -10791,16 +11423,16 @@
 
 		}
 		else {
-			endPoint = this.maximum;
+			endPoint = this.viewportMaximum;
 
 			//if ((Math.floor(this.interval) < this.interval && !this._options.interval) || true) {
 
 			//Check if it should be rendered as a category axis. If yes, then ceil the interval
 			if (this.labels && this.labels.length) {
 				var tempInterval = Math.ceil(this.interval);
-				var tempStartPoint = Math.ceil(this.intervalstartTimePercent);
+				var tempStartPoint = Math.ceil(this.intervalStartPosition);
 				var hasAllLabels = false;
-				for (i = tempStartPoint; i < this.maximum; i += tempInterval) {
+				for (i = tempStartPoint; i < this.viewportMaximum; i += tempInterval) {
 					if (this.labels[i]) {
 						hasAllLabels = true;
 					} else {
@@ -10811,16 +11443,16 @@
 
 				if (hasAllLabels) {
 					this.interval = tempInterval;
-					this.intervalstartTimePercent = tempStartPoint;
+					this.intervalStartPosition = tempStartPoint;
 				}
 			}
 
 			//parseFloat & toPrecision are being used to avoid issues related to precision.
-			for (i = this.intervalstartTimePercent; i <= endPoint; i = parseFloat((i + this.interval).toFixed(14))) {
+			for (i = this.intervalStartPosition; i <= endPoint; i = parseFloat((i + this.interval).toFixed(14))) {
 
-				var text = this.labelFormatter ? this.labelFormatter({ chart: this.chart, axis: this._options, value: i, label: this.labels[i] ? this.labels[i] : null })
+				var text = this.labelFormatter ? this.labelFormatter({ chart: this.chart._publicChartReference, axis: this._options, value: i, label: this.labels[i] ? this.labels[i] : null })
 					: this.type === "axisX" && this.labels[i] ? this.labels[i] : numberFormat(i, this.valueFormatString, this.chart._cultureInfo);
-				
+
 				textBlock = new TextBlock(this.ctx, {
 					x: 0,
 					y: 0,
@@ -10843,7 +11475,7 @@
 				this._labels.push({ position: i, textBlock: textBlock, effectiveHeight: null });
 			}
 		}
-           
+
 		for (var i = 0; i < this.stripLines.length; i++) {
 
 			var stripLine = this.stripLines[i];
@@ -10857,7 +11489,7 @@
 				maxWidth: labelMaxWidth,
 				maxHeight: labelMaxHeight,
 				angle: this.labelAngle,
-				text: stripLine.labelFormatter ? stripLine.labelFormatter({ chart: this.chart, axis: this, stripLine: stripLine }) : stripLine.label,
+				text: stripLine.labelFormatter ? stripLine.labelFormatter({ chart: this.chart._publicChartReference, axis: this, stripLine: stripLine }) : stripLine.label,
 				horizontalAlign: "left",//left, center, right
 				fontSize: stripLine.labelFontSize,//in pixels
 				fontFamily: stripLine.labelFontFamily,
@@ -10973,19 +11605,19 @@
 		if (axisY2)
 			axisY2.calculateAxisParameters();
 
-		if (axisY && axisY2 && typeof (axisY._options.maximum) === "undefined" && typeof (axisY._options.minimum) === "undefined" && typeof (axisY._options.interval) === "undefined"
-				&& typeof (axisY2._options.maximum) === "undefined" && typeof (axisY2._options.minimum) === "undefined" && typeof (axisY2._options.interval) === "undefined") {
+		//if (axisY && axisY2 && typeof (axisY._options.viewportMaximum) === "undefined" && typeof (axisY._options.viewportMinimum) === "undefined" && typeof (axisY._options.interval) === "undefined"
+		//		&& typeof (axisY2._options.viewportMaximum) === "undefined" && typeof (axisY2._options.viewportMinimum) === "undefined" && typeof (axisY2._options.interval) === "undefined") {
 
-			var noTicksY = (axisY.maximum - axisY.minimum) / axisY.interval;
+		//	var noTicksY = (axisY.viewportMaximum - axisY.viewportMinimum) / axisY.interval;
 
-			var noTicksY2 = (axisY2.maximum - axisY2.minimum) / axisY2.interval;
+		//	var noTicksY2 = (axisY2.viewportMaximum - axisY2.viewportMinimum) / axisY2.interval;
 
-			if (noTicksY > noTicksY2) {
-				axisY2.maximum = axisY2.interval * noTicksY + axisY2.minimum;
-			} else if (noTicksY2 > noTicksY) {
-				axisY.maximum = axisY.interval * noTicksY2 + axisY.minimum;
-			}
-		}
+		//	if (noTicksY > noTicksY2) {
+		//		axisY2.viewportMaximum = axisY2.interval * noTicksY + axisY2.viewportMinimum;
+		//	} else if (noTicksY2 > noTicksY) {
+		//		axisY.viewportMaximum = axisY.interval * noTicksY2 + axisY.viewportMinimum;
+		//	}
+		//}
 
 		var axisYlineThickness = axisY ? axisY.lineThickness ? axisY.lineThickness : 0 : 0;
 		var axisY2lineThickness = axisY2 ? axisY2.lineThickness ? axisY2.lineThickness : 0 : 0;
@@ -10994,18 +11626,19 @@
 		var axisY2GridThickness = axisY2 ? axisY2.gridThickness ? axisY2.gridThickness : 0 : 0;
 
 		var axisYMargin = axisY ? axisY.margin : 0;
-		var axisY2Margin = axisY ? axisY.margin : 0;
+		var axisY2Margin = axisY2 ? axisY2.margin : 0;
 
 		if (axisPlacement === "normal") {
 
-			axisX.lineCoordinates = {};
+			axisX.lineCoordinates = {
+			};
 
 			var axisYWidth = Math.ceil(axisY ? axisY.createLabelsAndCalculateWidth() : 0);
 			x1 = Math.round(freeSpace.x1 + axisYWidth + axisYMargin);
 			axisX.lineCoordinates.x1 = x1;
 
 			var axisY2Width = Math.ceil(axisY2 ? axisY2.createLabelsAndCalculateWidth() : 0);
-			x2 = Math.round(freeSpace.x2 - axisY2Width > axisX.chart.width - 10 ? axisX.chart.width - 10 : freeSpace.x2 - axisY2Width);
+			x2 = Math.round(freeSpace.x2 - axisY2Width - axisY2Margin > axisX.chart.width - 10 ? axisX.chart.width - 10 : freeSpace.x2 - axisY2Width - axisY2Margin);
 			axisX.lineCoordinates.x2 = x2;
 
 			axisX.lineCoordinates.width = Math.abs(x2 - x1); // required early on inside createLabels of axisX
@@ -11021,7 +11654,9 @@
 			axisX.lineCoordinates.y1 = y1;
 			axisX.lineCoordinates.y2 = y1;
 
-			axisX.boundingRect = { x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1 };
+			axisX.boundingRect = {
+				x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1
+			};
 
 			//if (isDebugMode) {
 			//	axisX.ctx.rect(axisX.boundingRect.x1, axisX.boundingRect.y1, axisX.boundingRect.width, axisX.boundingRect.height);
@@ -11036,9 +11671,13 @@
 				//y2 = freeSpace.y2 - axisXHeight - axisX.margin - axisX.lineThickness / 2;
 				y2 = Math.round(freeSpace.y2 - axisXHeight - axisX.margin);
 
-				axisY.lineCoordinates = { x1: x2, y1: y1, x2: x2, y2: y2, height: Math.abs(y2 - y1) }
+				axisY.lineCoordinates = {
+					x1: x2, y1: y1, x2: x2, y2: y2, height: Math.abs(y2 - y1)
+				}
 
-				axisY.boundingRect = { x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1 };
+				axisY.boundingRect = {
+					x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1
+				};
 			}
 
 			//if (isDebugMode && axisY) {
@@ -11050,23 +11689,27 @@
 			if (axisY2) {
 				x1 = Math.round(axisX.lineCoordinates.x2);
 				y1 = Math.round(freeSpace.y1 < 10 ? 10 : freeSpace.y1);
-				x2 = Math.round(x1 + axisY2Width + axisY2.margin);
+				x2 = Math.round(x1 + axisY2Width);
 				//y2 = freeSpace.y2 - axisXHeight - axisX.margin - axisX.lineThickness / 2;
 				y2 = Math.round(freeSpace.y2 - axisXHeight - axisX.margin);
 
-				axisY2.lineCoordinates = { x1: x1, y1: y1, x2: x1, y2: y2, height: Math.abs(y2 - y1) }
+				axisY2.lineCoordinates = {
+					x1: x1, y1: y1, x2: x1, y2: y2, height: Math.abs(y2 - y1)
+				}
 
-				axisY2.boundingRect = { x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1 };
+				axisY2.boundingRect = {
+					x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1
+				};
 			}
 
 
-			axisX.calculateValueToPixelconversionParameters();
+			axisX.calculateValueToPixelConversionParameters();
 
 			if (axisY)
-				axisY.calculateValueToPixelconversionParameters();
+				axisY.calculateValueToPixelConversionParameters();
 
 			if (axisY2)
-				axisY2.calculateValueToPixelconversionParameters();
+				axisY2.calculateValueToPixelConversionParameters();
 
 
 			ctx.save();
@@ -11143,7 +11786,8 @@
 			var axisXWidth = Math.ceil(axisX.createLabelsAndCalculateWidth());
 
 			if (axisY) {
-				axisY.lineCoordinates = {};
+				axisY.lineCoordinates = {
+				};
 
 				x1 = Math.round(freeSpace.x1 + axisXWidth + axisX.margin);
 				x2 = Math.round(freeSpace.x2 > axisY.chart.width - 10 ? axisY.chart.width - 10 : freeSpace.x2);
@@ -11154,7 +11798,8 @@
 			}
 
 			if (axisY2) {
-				axisY2.lineCoordinates = {};
+				axisY2.lineCoordinates = {
+				};
 				x1 = Math.round(freeSpace.x1 + axisXWidth + axisX.margin);
 				x2 = Math.round(freeSpace.x2 > axisY2.chart.width - 10 ? axisY2.chart.width - 10 : freeSpace.x2);
 
@@ -11181,7 +11826,9 @@
 				axisY.lineCoordinates.y1 = y1;
 				axisY.lineCoordinates.y2 = y1;
 
-				axisY.boundingRect = { x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: axisYHeight };
+				axisY.boundingRect = {
+					x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: axisYHeight
+				};
 			}
 
 			// Position axisY based on the available free space, Margin and its height
@@ -11196,7 +11843,9 @@
 				axisY2.lineCoordinates.y1 = y2;
 				axisY2.lineCoordinates.y2 = y2;
 
-				axisY2.boundingRect = { x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: axisY2Height };
+				axisY2.boundingRect = {
+					x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: axisY2Height
+				};
 			}
 
 			//axisY.ctx.rect(axisY.boundingRect.x1, axisY.boundingRect.y1, axisY.boundingRect.width, axisY.boundingRect.height);
@@ -11209,19 +11858,23 @@
 			y2 = Math.round(axisY ? axisY.lineCoordinates.y1 : (freeSpace.y2 - axisYMargin > axisX.chart.height - 10 ? axisX.chart.height - 10 : freeSpace.y2 - axisYMargin));
 
 
-			axisX.lineCoordinates = { x1: x2, y1: y1, x2: x2, y2: y2, height: Math.abs(y2 - y1) };
+			axisX.lineCoordinates = {
+				x1: x2, y1: y1, x2: x2, y2: y2, height: Math.abs(y2 - y1)
+			};
 
-			axisX.boundingRect = { x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1 };
+			axisX.boundingRect = {
+				x1: x1, y1: y1, x2: x2, y2: y2, width: x2 - x1, height: y2 - y1
+			};
 
 			//axisX.ctx.rect(axisX.boundingRect.x1, axisX.boundingRect.y1, axisX.boundingRect.width, axisX.boundingRect.height);
 			//axisX.ctx.stroke();
 
-			axisX.calculateValueToPixelconversionParameters();
+			axisX.calculateValueToPixelConversionParameters();
 
 			if (axisY)
-				axisY.calculateValueToPixelconversionParameters();
+				axisY.calculateValueToPixelConversionParameters();
 			if (axisY2)
-				axisY2.calculateValueToPixelconversionParameters();
+				axisY2.calculateValueToPixelConversionParameters();
 
 
 			//ctx.save();
@@ -11314,7 +11967,7 @@
 
 				for (i = 0; i < this._labels.length; i++) {
 					label = this._labels[i];
-					if (label.position < this.minimum || label.stripLine)// don't consider stripLine's lable
+					if (label.position < this.viewportMinimum || label.stripLine)// don't consider stripLine's lable
 						continue;
 
 					var width = label.textBlock.width * Math.cos(Math.PI / 180 * this.labelAngle) + label.textBlock.height * Math.sin(Math.PI / 180 * this.labelAngle);
@@ -11328,7 +11981,7 @@
 			} if (this._position === "left" || this._position === "right") {
 				for (i = 0; i < this._labels.length; i++) {
 					label = this._labels[i];
-					if (label.position < this.minimum || label.stripLine)// don't consider stripLine's lable
+					if (label.position < this.viewportMinimum || label.stripLine)// don't consider stripLine's lable
 						continue;
 
 					var width = label.textBlock.height * Math.cos(Math.PI / 180 * this.labelAngle) + label.textBlock.width * Math.sin(Math.PI / 180 * this.labelAngle);
@@ -11351,7 +12004,7 @@
 			for (i = 0; i < this._labels.length; i++) {
 
 				label = this._labels[i];
-				if (label.position < this.minimum || label.position > this.maximum)
+				if (label.position < this.viewportMinimum || label.position > this.viewportMaximum)
 					continue;
 
 				xy = this.getPixelCoordinatesOnAxis(label.position);
@@ -11428,7 +12081,7 @@
 
 			for (i = 0; i < this._labels.length; i++) {
 				label = this._labels[i];
-				if (label.position < this.minimum || label.position > this.maximum)
+				if (label.position < this.viewportMinimum || label.position > this.viewportMaximum)
 					continue;
 
 				xy = this.getPixelCoordinatesOnAxis(label.position);
@@ -11502,7 +12155,7 @@
 			var xy;
 			for (var i = 0; i < this._labels.length; i++) {
 				label = this._labels[i];
-				if (label.position < this.minimum || label.position > this.maximum)
+				if (label.position < this.viewportMinimum || label.position > this.viewportMaximum)
 					continue;
 
 				xy = this.getPixelCoordinatesOnAxis(label.position);
@@ -11584,7 +12237,7 @@
 
 			for (var i = 0; i < this._labels.length; i++) {
 				label = this._labels[i];
-				if (label.position < this.minimum || label.position > this.maximum)
+				if (label.position < this.viewportMinimum || label.position > this.viewportMaximum)
 					continue;
 
 				xy = this.getPixelCoordinatesOnAxis(label.position);
@@ -11672,7 +12325,7 @@
 					interlacedGridStartPoint = this.getPixelCoordinatesOnAxis(this._labels[i].position);
 
 					if (i + 1 >= this._labels.length - 1)
-						interlacedGridEndPoint = this.getPixelCoordinatesOnAxis(this.maximum);
+						interlacedGridEndPoint = this.getPixelCoordinatesOnAxis(this.viewportMaximum);
 					else
 						interlacedGridEndPoint = this.getPixelCoordinatesOnAxis(this._labels[i + 1].position);
 
@@ -11687,16 +12340,16 @@
 
 			ctx.fillStyle = this.interlacedColor;
 
-			for (i = 0; i < this._labels.length; i++) {			 
-			        if (this._labels[i].stripLine)
-			            continue;
-			      
+			for (i = 0; i < this._labels.length; i++) {
+				if (this._labels[i].stripLine)
+					continue;
+
 				if (renderInterlacedGrid) {//So that the interlaced color alternates
 
 					interlacedGridEndPoint = this.getPixelCoordinatesOnAxis(this._labels[i].position);
 
 					if (i + 1 >= this._labels.length - 1)
-					    interlacedGridStartPoint = this.getPixelCoordinatesOnAxis(this.maximum);
+						interlacedGridStartPoint = this.getPixelCoordinatesOnAxis(this.viewportMaximum);
 					else
 						interlacedGridStartPoint = this.getPixelCoordinatesOnAxis(this._labels[i + 1].position);
 
@@ -11705,7 +12358,7 @@
 				} else
 					renderInterlacedGrid = true;
 			}
-			    //throw "123";
+			//throw "123";
 		}
 
 		ctx.beginPath();
@@ -11729,7 +12382,7 @@
 
 
 			//Should be skipped only if thicknessType is "pixel". If it is "value" then clipping is automatically applied before calling.
-			if (thicknessType === "pixel" && (stripLine.value < this.minimum || stripLine.value > this.maximum))
+			if (thicknessType === "pixel" && (stripLine.value < this.viewportMinimum || stripLine.value > this.viewportMaximum))
 				continue;
 
 			if (stripLine.showOnTop) {
@@ -11747,12 +12400,12 @@
 
 		//var ctx = this.chart.plotArea.ctx;
 		var ctx = this.chart.ctx;
+		ctx.save();
 
 		var xy;
 		var plotAreaCoordinates = this.chart.plotArea;
 		var stripLine;
 		var tempLineWidth, tempStrokeStyle;
-		//return;
 
 		ctx.lineWidth = this.gridThickness;
 		ctx.strokeStyle = this.gridColor;
@@ -11766,7 +12419,7 @@
 
 			for (i = 0; i < this._labels.length && !this._labels[i].stripLine; i++) {
 
-				if (this._labels[i].position < this.minimum || this._labels[i].position > this.maximum)
+				if (this._labels[i].position < this.viewportMinimum || this._labels[i].position > this.viewportMaximum)
 					continue;
 
 				ctx.beginPath();
@@ -11789,7 +12442,7 @@
 				if (i === 0 && this.type === "axisY" && this.chart.axisX && this.chart.axisX.lineThickness)
 					continue;
 
-				if (this._labels[i].position < this.minimum || this._labels[i].position > this.maximum)
+				if (this._labels[i].position < this.viewportMinimum || this._labels[i].position > this.viewportMaximum)
 					continue;
 
 				ctx.beginPath();
@@ -11805,11 +12458,14 @@
 			}
 
 		}
+
+		ctx.restore();
 	}
 
 	Axis.prototype.renderAxisLine = function () {
 		//var ctx = this.chart.plotArea.ctx;
 		var ctx = this.chart.ctx;
+		ctx.save();
 
 		if (this._position === "bottom" || this._position === "top") {
 			if (this.lineThickness) {
@@ -11844,29 +12500,55 @@
 				ctx.lineTo(lineX, this.lineCoordinates.y2);
 				ctx.stroke();
 			}
-
 		}
+
+		ctx.restore();
 	}
 
 	Axis.prototype.getPixelCoordinatesOnAxis = function (value) {
-		var xy = {};
+		var xy = {
+		};
 		var width = this.lineCoordinates.width;
 		var height = this.lineCoordinates.height;
 
 		if (this._position === "bottom" || this._position === "top") {
-			var pixelPerUnit = width / Math.abs(this.maximum - this.minimum);
+			//var pixelPerUnit = width / Math.abs(this.viewportMaximum - this.viewportMinimum);
+			var pixelPerUnit = this.conversionParameters.pixelPerUnit;
 
-			xy.x = this.lineCoordinates.x1 + (pixelPerUnit * (value - this.minimum));
+			//xy.x = this.lineCoordinates.x1 + (pixelPerUnit * (value - this.viewportMinimum));
+			xy.x = this.conversionParameters.reference + (pixelPerUnit * (value - this.viewportMinimum));
 			xy.y = this.lineCoordinates.y1;
 		}
 		if (this._position === "left" || this._position === "right") {
-			var pixelPerUnit = height / Math.abs(this.maximum - this.minimum);
+			//var pixelPerUnit = height / Math.abs(this.viewportMaximum - this.viewportMinimum);
+			var pixelPerUnit = -this.conversionParameters.pixelPerUnit;
 
-			xy.y = this.lineCoordinates.y2 - (pixelPerUnit * (value - this.minimum));
+			//xy.y = this.lineCoordinates.y2 - (pixelPerUnit * (value - this.viewportMinimum));
+			xy.y = this.conversionParameters.reference - (pixelPerUnit * (value - this.viewportMinimum));
 			xy.x = this.lineCoordinates.x2;
 		}
 
 		return xy;
+	}
+
+	Axis.prototype.convertPixelToValue = function (pixel) {
+
+		if (!pixel)
+			return null;
+
+		var value = 0;
+		var p = (this._position === "left" || this._position === "right") ? pixel.y : pixel.x;
+
+		value = this.conversionParameters.minimum + (p - this.conversionParameters.reference) / this.conversionParameters.pixelPerUnit;
+
+		return value;
+	}
+
+	Axis.prototype.setViewPortRange = function (viewportMinimum, viewportMaximum) {
+
+		this.sessionVariables.newViewportMinimum = this.viewportMinimum = Math.min(viewportMinimum, viewportMaximum);
+		this.sessionVariables.newViewportMaximum = this.viewportMaximum = Math.max(viewportMinimum, viewportMaximum);
+
 	}
 
 	Axis.prototype.getXValueAt = function (pixel) {
@@ -11876,37 +12558,35 @@
 		var xval = null;
 
 		if (this._position === "left") {
-			xval = (this.chart.axisX.maximum - this.chart.axisX.minimum) / this.chart.axisX.lineCoordinates.height * ((this.chart.axisX.lineCoordinates.y2 - pixel.y)) + this.chart.axisX.minimum;
+			xval = (this.chart.axisX.viewportMaximum - this.chart.axisX.viewportMinimum) / this.chart.axisX.lineCoordinates.height * ((this.chart.axisX.lineCoordinates.y2 - pixel.y)) + this.chart.axisX.viewportMinimum;
 		}
 		else if (this._position === "bottom") {
-			xval = (this.chart.axisX.maximum - this.chart.axisX.minimum) / this.chart.axisX.lineCoordinates.width * (pixel.x - this.chart.axisX.lineCoordinates.x1) + this.chart.axisX.minimum;
+			xval = (this.chart.axisX.viewportMaximum - this.chart.axisX.viewportMinimum) / this.chart.axisX.lineCoordinates.width * (pixel.x - this.chart.axisX.lineCoordinates.x1) + this.chart.axisX.viewportMinimum;
 		}
 
 		return xval;
 	}
 
-	Axis.prototype.calculateValueToPixelconversionParameters = function (value) {
-		var xy = {};
-		var conversionParameters = { pixelPerUnit: null, minimum: null, reference: null };
+	Axis.prototype.calculateValueToPixelConversionParameters = function (value) {
+		this.reversed = false;
+
+		var conversionParameters = {
+			pixelPerUnit: null, minimum: null, reference: null
+		};
 
 		var width = this.lineCoordinates.width;
 		var height = this.lineCoordinates.height;
 
-		conversionParameters.minimum = this.minimum;
+		conversionParameters.minimum = this.viewportMinimum;
 
 		if (this._position === "bottom" || this._position === "top") {
-			conversionParameters.pixelPerUnit = width / Math.abs(this.maximum - this.minimum);
-			conversionParameters.reference = this.lineCoordinates.x1;
-
-			//xy.x = this.lineCoordinates.x1 + (pixelPerUnit * (value - this.minimum));
-			//xy.y = this.lineCoordinates.y1;
+			conversionParameters.pixelPerUnit = (this.reversed ? -1 : 1) * width / Math.abs(this.viewportMaximum - this.viewportMinimum);
+			conversionParameters.reference = (this.reversed ? this.lineCoordinates.x2 : this.lineCoordinates.x1);
 		}
-		if (this._position === "left" || this._position === "right") {
-			conversionParameters.pixelPerUnit = -1 * height / Math.abs(this.maximum - this.minimum);
-			conversionParameters.reference = this.lineCoordinates.y2;
 
-			//xy.y = this.lineCoordinates.y2 + (pixelPerUnit * (value - this.minimum));
-			//xy.x = this.lineCoordinates.x2;
+		if (this._position === "left" || this._position === "right") {
+			conversionParameters.pixelPerUnit = (this.reversed ? 1 : -1) * height / Math.abs(this.viewportMaximum - this.viewportMinimum);
+			conversionParameters.reference = (this.reversed ? this.lineCoordinates.y1 : this.lineCoordinates.y2);
 		}
 
 
@@ -11929,15 +12609,21 @@
 		}
 
 		var noTicks = this.type === "axisX" ? (this.maxWidth < 500 ? 8 : Math.max(6, Math.floor(this.maxWidth / 62))) : Math.max(Math.floor(this.maxWidth / 40), 2);
-		//var noTicks = 8;
 		var min, max;
 		var minDiff;
 		var range;
 		var rangePadding = 0;
 
+
+		if (this.viewportMinimum === null || isNaN(this.viewportMinimum))
+			this.viewportMinimum = this.minimum;
+
+		if (this.viewportMaximum === null || isNaN(this.viewportMaximum))
+			this.viewportMaximum = this.maximum;
+
 		if (this.type === "axisX") {
-			min = (this.sessionVariables.internalMinimum !== null) ? this.sessionVariables.internalMinimum : this.dataInfo.viewPortMin;
-			max = (this.sessionVariables.internalMaximum !== null) ? this.sessionVariables.internalMaximum : this.dataInfo.viewPortMax;
+			min = (this.viewportMinimum !== null) ? this.viewportMinimum : this.dataInfo.viewPortMin;
+			max = (this.viewportMaximum !== null) ? this.viewportMaximum : this.dataInfo.viewPortMax;
 
 			if (max - min === 0) {
 				rangePadding = typeof (this._options.interval) === "undefined" ? .4 : this._options.interval;
@@ -11960,56 +12646,72 @@
 
 		} else if (this.type === "axisY") {
 
-			min = typeof (this._options.minimum) === "undefined" || this._options.minimum === null ? this.dataInfo.viewPortMin : this._options.minimum;
-			max = typeof (this._options.maximum) === "undefined" || this._options.maximum === null ? this.dataInfo.viewPortMax : this._options.maximum;
-            
+			//min = typeof (this._options.viewportMinimum) === "undefined" || this._options.viewportMinimum === null ? this.dataInfo.viewPortMin : this._options.viewportMinimum;
+			//max = typeof (this._options.viewportMaximum) === "undefined" || this._options.viewportMaximum === null ? this.dataInfo.viewPortMax : this._options.viewportMaximum;
+			min = (this.viewportMinimum !== null) ? this.viewportMinimum : this.dataInfo.viewPortMin;
+			max = (this.viewportMaximum !== null) ? this.viewportMaximum : this.dataInfo.viewPortMax;
+
 			if (!isFinite(min) && !isFinite(max)) {
 				max = typeof (this._options.interval) === "undefined" ? -Infinity : this._options.interval;
 				min = 0;
+			} else if (!isFinite(min)) {
+				min = max;
+			} else if (!isFinite(max)) {
+				max = min;
 			}
-			else
-				if (min === 0 && max === 0) {// When all dataPoints are zero
-					max += 9;
-					min = 0;
-				}
-				else if (max - min === 0) {// When there is only a single dataPoint or when all dataPoints have same Y Value
-					rangePadding = Math.min(Math.abs(Math.abs(max) * .01), 5);
+
+			if (min === 0 && max === 0) {// When all dataPoints are zero
+				max += 9;
+				min = 0;
+			}
+			else if (max - min === 0) {// When there is only a single dataPoint or when all dataPoints have same Y Value
+				rangePadding = Math.min(Math.abs(Math.abs(max) * .01), 5);
+				max += rangePadding;
+				min -= rangePadding;
+			}
+			else if (min > max) {
+				rangePadding = Math.min(Math.abs(Math.abs(max - min) * .01), 5);
+
+				if (max >= 0)
+					min = max - rangePadding;
+				else
+					max = min + rangePadding;
+			}
+			else {
+
+				rangePadding = Math.min(Math.abs(Math.abs(max - min) * .01), .05);
+
+				if (max !== 0)
 					max += rangePadding;
+				if (min !== 0)
 					min -= rangePadding;
-				}
-				else if (min > max) {
-					rangePadding = Math.min(Math.abs(Math.abs(max - min) * .01), 5);
+			}
 
-					if (max >= 0)
-						min = max - rangePadding;
-					else
-						max = min + rangePadding;
-				}
-				else {
-
-					rangePadding = Math.min(Math.abs(Math.abs(max - min) * .01), .05);
-
-					if (max !== 0)
-						max += rangePadding;
-					if (min !== 0)
-						min -= rangePadding;
-				}
+			if (this.dataInfo.minDiff !== Infinity)
+				minDiff = this.dataInfo.minDiff;
+			else if (max - min > 1) {
+				minDiff = Math.abs(max - min) * .5;
+			}
+			else {
+				minDiff = 1;
+			}
 
 
 			//Apply includeZero
-			if (this.includeZero && (typeof (this._options.minimum) === "undefined" || this._options.minimum === null)) {
+			if (this.includeZero && (this.viewportMinimum === null || isNaN(this.viewportMinimum))) {
 				if (min > 0)
 					min = 0;
 			}
-			if (this.includeZero && (typeof (this._options.maximum) === "undefined" || this._options.maximum === null)) {
+
+			if (this.includeZero && (this.viewportMaximum === null || isNaN(this.viewportMaximum))) {
 				if (max < 0)
 					max = 0;
 			}
 		}
 
-		if (this.type === "axisX" && this.chart.plotInfo.axisXValueType === "dateTime") {
+		range = (isNaN(this.viewportMaximum) || this.viewportMaximum === null ? max : this.viewportMaximum) - (isNaN(this.viewportMinimum) || this.viewportMinimum === null ? min : this.viewportMinimum);
 
-			range = max - min;
+		if (this.type === "axisX" && this.chart.plotInfo.axisXValueType === "dateTime") {
 
 			if (!this.intervalType) {
 
@@ -12149,108 +12851,219 @@
 
 			}
 
-			if (this.sessionVariables.internalMinimum !== null)
-				this.minimum = this.sessionVariables.internalMinimum;
-			else {
-				this.minimum = min - minDiff / 2;
+			if (this.viewportMinimum === null || isNaN(this.viewportMinimum))
+				this.viewportMinimum = min - minDiff / 2;
+
+			if (this.viewportMaximum === null || isNaN(this.viewportMaximum))
+				this.viewportMaximum = max + minDiff / 2;
+
+
+			if (isLessThanTwoDataPoints) {
+				this.autoValueFormatString = "MMM DD YYYY HH:mm";
+			} else if (this.intervalType === "year") {
+				this.autoValueFormatString = "YYYY";
+			} else if (this.intervalType === "month") {
+				this.autoValueFormatString = "MMM YYYY";
+			} else if (this.intervalType === "week") {
+				this.autoValueFormatString = "MMM DD YYYY";
+			} else if (this.intervalType === "day") {
+				this.autoValueFormatString = "MMM DD YYYY";
+			} else if (this.intervalType === "hour") {
+				this.autoValueFormatString = "hh:mm TT";
+			} else if (this.intervalType === "minute") {
+				this.autoValueFormatString = "hh:mm TT";
+			} else if (this.intervalType === "second") {
+				this.autoValueFormatString = "hh:mm:ss TT";
+			} else if (this.intervalType === "millisecond") {
+				this.autoValueFormatString = "fff'ms'";
 			}
-
-			if (this.sessionVariables.internalMaximum !== null)
-				this.maximum = this.sessionVariables.internalMaximum;
-			else
-				this.maximum = max + minDiff / 2;
-
 
 			if (!this.valueFormatString) {
-				if (isLessThanTwoDataPoints) {
-					this.valueFormatString = "MMM DD YYYY HH:mm";
-				} else if (this.intervalType === "year") {
-					this.valueFormatString = "YYYY";
-				} else if (this.intervalType === "month") {
-					this.valueFormatString = "MMM YYYY";
-				} else if (this.intervalType === "week") {
-					this.valueFormatString = "MMM DD YYYY";
-				} else if (this.intervalType === "day") {
-					this.valueFormatString = "MMM DD YYYY";
-				} else if (this.intervalType === "hour") {
-					this.valueFormatString = "hh:mm TT";
-				} else if (this.intervalType === "minute") {
-					this.valueFormatString = "hh:mm TT";
-				} else if (this.intervalType === "second") {
-					this.valueFormatString = "hh:mm:ss TT";
-				} else if (this.intervalType === "millisecond") {
-					this.valueFormatString = "fff'ms'";
-				}
+				this.valueFormatString = this.autoValueFormatString;
 			}
-
-			this.intervalstartTimePercent = this.getLabelStartPoint(new Date(this.minimum), this.intervalType, this.interval);
 
 		} else {
 
 			this.intervalType = "number";
 
-			range = Axis.getNiceNumber(max - min, false);
+			range = Axis.getNiceNumber(range, false);
 
-			if (this._options && this._options.interval)
+			if (this._options && this._options.interval > 0)
 				this.interval = this._options.interval;
 			else {
 				this.interval = Axis.getNiceNumber(range / (noTicks - 1), true);
 			}
 
+			if (this.viewportMinimum === null || isNaN(this.viewportMinimum)) {
+				if (this.type === "axisX")
+					this.viewportMinimum = min - minDiff / 2;
+				else
+					this.viewportMinimum = Math.floor(min / this.interval) * this.interval;
+			}
 
-			if (this.sessionVariables.internalMinimum !== null)
-				this.minimum = this.sessionVariables.internalMinimum;
-			else
-				this.minimum = Math.floor(min / this.interval) * this.interval;
+			if (this.viewportMaximum === null || isNaN(this.viewportMaximum)) {
+				if (this.type === "axisX")
+					this.viewportMaximum = max + minDiff / 2;
+				else
+					this.viewportMaximum = Math.ceil(max / this.interval) * this.interval;
+			}
 
-			if (this.sessionVariables.internalMaximum !== null)
-				this.maximum = this.sessionVariables.internalMaximum;
-			else
-				this.maximum = Math.ceil(max / this.interval) * this.interval;
+			if (this.viewportMaximum === 0 && this.viewportMinimum === 0) {
 
-			//var nfrac = Math.max(-Math.floor(Math.log(d)/Math.LN10), 0); //number of fractional digits to show
-
-
-			if (this.maximum === 0 && this.minimum === 0) {
-
-				if (this._options.minimum === 0) {
-					this.maximum += 10;
+				if (this._options.viewportMinimum === 0) {
+					this.viewportMaximum += 10;
 				}
-				else if (this._options.maximum === 0) {
-					this.minimum -= 10;
+				else if (this._options.viewportMaximum === 0) {
+					this.viewportMinimum -= 10;
 				}
 
 				if (this._options && typeof (this._options.interval) === "undefined") {
-					this.interval = Axis.getNiceNumber((this.maximum - this.minimum) / (noTicks - 1), true);
+					this.interval = Axis.getNiceNumber((this.viewportMaximum - this.viewportMinimum) / (noTicks - 1), true);
 				}
 			}
+		}
 
+		//Calculate minimum and maximum if not provided by the user
+		if (this.minimum === null || this.maximum === null) {
 			if (this.type === "axisX") {
-				if (!(this.sessionVariables.internalMinimum !== null)) {
-					this.minimum = min - minDiff / 2;
-				}
-				if (!(this.sessionVariables.internalMaximum !== null)) {
-					this.maximum = max + minDiff / 2;
+				min = (this.minimum !== null) ? this.minimum : this.dataInfo.min;
+				max = (this.maximum !== null) ? this.maximum : this.dataInfo.max;
+
+				if (max - min === 0) {
+					rangePadding = typeof (this._options.interval) === "undefined" ? .4 : this._options.interval;
+
+					max += rangePadding;
+					min -= rangePadding;
 				}
 
-				this.intervalstartTimePercent = Math.floor((this.minimum + (this.interval * .2)) / this.interval) * this.interval;
+				if (this.dataInfo.minDiff !== Infinity)
+					minDiff = this.dataInfo.minDiff;
+				else if (max - min > 1) {
+					minDiff = Math.abs(max - min) * .5;
+				}
+				else {
+					minDiff = 1;
+				}
+
 			} else if (this.type === "axisY") {
-				this.intervalstartTimePercent = this.minimum;
+
+				min = (this.minimum !== null) ? this.minimum : this.dataInfo.min;
+				max = (this.maximum !== null) ? this.maximum : this.dataInfo.max;
+
+				if (!isFinite(min) && !isFinite(max)) {
+					max = typeof (this._options.interval) === "undefined" ? -Infinity : this._options.interval;
+					min = 0;
+				}
+				else
+					if (min === 0 && max === 0) {// When all dataPoints are zero
+						max += 9;
+						min = 0;
+					}
+					else if (max - min === 0) {// When there is only a single dataPoint or when all dataPoints have same Y Value
+						rangePadding = Math.min(Math.abs(Math.abs(max) * .01), 5);
+						max += rangePadding;
+						min -= rangePadding;
+					}
+					else if (min > max) {
+						rangePadding = Math.min(Math.abs(Math.abs(max - min) * .01), 5);
+
+						if (max >= 0)
+							min = max - rangePadding;
+						else
+							max = min + rangePadding;
+					}
+					else {
+
+						rangePadding = Math.min(Math.abs(Math.abs(max - min) * .01), .05);
+
+						if (max !== 0)
+							max += rangePadding;
+						if (min !== 0)
+							min -= rangePadding;
+					}
+
+				if (this.dataInfo.minDiff !== Infinity)
+					minDiff = this.dataInfo.minDiff;
+				else if (max - min > 1) {
+					minDiff = Math.abs(max - min) * .5;
+				}
+				else {
+					minDiff = 1;
+				}
+
+
+				//Apply includeZero
+				if (this.includeZero && (this.minimum === null || isNaN(this.minimum))) {
+					if (min > 0)
+						min = 0;
+				}
+
+				if (this.includeZero && (this.maximum === null || isNaN(this.maximum))) {
+					if (max < 0)
+						max = 0;
+				}
 			}
 
+			range = max - min;
 
+			if (this.type === "axisX" && this.chart.plotInfo.axisXValueType === "dateTime") {
+
+				if (this.minimum === null || isNaN(this.minimum))
+					this.minimum = min - minDiff / 2;
+
+				if (this.maximum === null || isNaN(this.maximum))
+					this.maximum = max + minDiff / 2;
+
+			} else {
+
+				this.intervalType = "number";
+
+				if (this.minimum === null) {
+					if (this.type === "axisX")
+						this.minimum = min - minDiff / 2;
+					else
+						this.minimum = Math.floor(min / this.interval) * this.interval;
+
+					this.minimum = Math.min(this.minimum, this.sessionVariables.viewportMinimum === null || isNaN(this.sessionVariables.viewportMinimum) ? Infinity : this.sessionVariables.viewportMinimum);
+				}
+
+				if (this.maximum === null) {
+					if (this.type === "axisX")
+						this.maximum = max + minDiff / 2;
+					else
+						this.maximum = Math.ceil(max / this.interval) * this.interval;
+
+					this.maximum = Math.max(this.maximum, this.sessionVariables.viewportMaximum === null || isNaN(this.sessionVariables.viewportMaximum) ? -Infinity : this.sessionVariables.viewportMaximum);
+				}
+
+				//var nfrac = Math.max(-Math.floor(Math.log(d)/Math.LN10), 0); //number of fractional digits to show
+
+
+				if (this.maximum === 0 && this.minimum === 0) {
+
+					if (this._options.minimum === 0) {
+						this.maximum += 10;
+					}
+					else if (this._options.maximum === 0) {
+						this.minimum -= 10;
+					}
+				}
+			}
 		}
 
-		if (this.type === "axisX") {
-			this._absoluteMinimum = this._options && typeof (this._options.minimum) !== "undefined" ? this._options.minimum : this.dataInfo.min - minDiff / 2;
-			this._absoluteMaximum = this._options && typeof (this._options.maximum) !== "undefined" ? this._options.maximum : this.dataInfo.max + minDiff / 2;
-		}
+		this.viewportMinimum = Math.max(this.viewportMinimum, this.minimum);
+		this.viewportMaximum = Math.min(this.viewportMaximum, this.maximum);
+
+		if (this.type === "axisX" && this.chart.plotInfo.axisXValueType === "dateTime")
+			this.intervalStartPosition = this.getLabelStartPoint(new Date(this.viewportMinimum), this.intervalType, this.interval);
+		else
+			this.intervalStartPosition = Math.floor((this.viewportMinimum + (this.interval * .2)) / this.interval) * this.interval;
 
 		//Set valueFormatString
 		if (!this.valueFormatString) {
 			this.valueFormatString = "#,##0.##";
 
-			range = Math.abs(this.maximum - this.minimum);
+			range = Math.abs(this.viewportMaximum - this.viewportMinimum);
 
 			if (range < 1) {
 				var numberOfDecimals = Math.floor(Math.abs(Math.log(range) / Math.LN10)) + 2;
@@ -12265,10 +13078,10 @@
 			}
 
 		}
-		
+
 		//if (isDebugMode && window.console) {
-		//    window.console.log(this.type + ": Min = " + this.minimum);
-		//    window.console.log(this.type + ": Max = " + this.maximum);
+		//    window.console.log(this.type + ": Min = " + this.viewportMinimum);
+		//    window.console.log(this.type + ": Max = " + this.viewportMaximum);
 		//    window.console.log(this.type + ": Interval = " + this.interval);
 		//}
 	}
@@ -12305,7 +13118,7 @@
 	Axis.prototype.getLabelStartPoint = function () {
 
 		var intervalInMilliseconds = convertToNumber(this.interval, this.intervalType);
-		var minimum = Math.floor((this.minimum) / intervalInMilliseconds) * intervalInMilliseconds;
+		var minimum = Math.floor((this.viewportMinimum) / intervalInMilliseconds) * intervalInMilliseconds;
 		var dateTime = new Date(minimum);
 
 		if (this.intervalType === "millisecond") {
@@ -12402,6 +13215,7 @@
 
 	StripLine.prototype.render = function () {
 
+		this.ctx.save();
 		var xy = this.parent.getPixelCoordinatesOnAxis(this.value);
 
 		var lineWidth = Math.abs(this._thicknessType === "pixel" ? this.thickness : this.parent.conversionParameters.pixelPerUnit * this.thickness);
@@ -12448,6 +13262,8 @@
 
 			this.ctx.globalAlpha = oldGlobalAlpha;
 		}
+
+		this.ctx.restore();
 	};
 
 	//#endregion StripLine
@@ -12573,10 +13389,10 @@
 		if (this.shared && this.enabled && this.chart.plotInfo.axisPlacement !== "none") {
 			// && this.chart.plotInfo.axisPlacement !== "none"
 			if (this.chart.plotInfo.axisPlacement === "xySwapped") {
-				x = (this.chart.axisX.maximum - this.chart.axisX.minimum) / this.chart.axisX.lineCoordinates.height * ((this.chart.axisX.lineCoordinates.y2 - mouseY)) + this.chart.axisX.minimum;
+				x = (this.chart.axisX.viewportMaximum - this.chart.axisX.viewportMinimum) / this.chart.axisX.lineCoordinates.height * ((this.chart.axisX.lineCoordinates.y2 - mouseY)) + this.chart.axisX.viewportMinimum;
 			}
 			else {
-				x = (this.chart.axisX.maximum - this.chart.axisX.minimum) / this.chart.axisX.lineCoordinates.width * (mouseX - this.chart.axisX.lineCoordinates.x1) + this.chart.axisX.minimum;
+				x = (this.chart.axisX.viewportMaximum - this.chart.axisX.viewportMinimum) / this.chart.axisX.lineCoordinates.width * (mouseX - this.chart.axisX.lineCoordinates.x1) + this.chart.axisX.viewportMinimum;
 			}
 
 			var nearbyEntries = [];
@@ -12645,7 +13461,8 @@
 
 				dataSeries = this.chart.data[this.currentSeriesIndex];
 
-				var entry = {};
+				var entry = {
+				};
 
 				if (this.currentDataPointIndex >= 0) {
 					dataPoint = dataSeries.dataPoints[this.currentDataPointIndex];
@@ -12658,7 +13475,10 @@
 						|| dataSeries.type === "splineArea" || dataSeries.type === "stackedArea" || dataSeries.type === "stackedArea100"
 						|| dataSeries.type === "rangeArea" || dataSeries.type === "rangeSplineArea"
 						|| dataSeries.type === "candlestick" || dataSeries.type === "ohlc")) {
-					var x = (this.chart.axisX.maximum - this.chart.axisX.minimum) / this.chart.axisX.lineCoordinates.width * (mouseX - this.chart.axisX.lineCoordinates.x1) + this.chart.axisX.minimum.valueOf();
+
+					//var x = (this.chart.axisX.viewportMaximum - this.chart.axisX.viewportMinimum) / this.chart.axisX.lineCoordinates.width * (mouseX - this.chart.axisX.lineCoordinates.x1) + this.chart.axisX.viewportMinimum.valueOf();
+					var x = dataSeries.axisX.conversionParameters.minimum + (mouseX - dataSeries.axisX.conversionParameters.reference) / dataSeries.axisX.conversionParameters.pixelPerUnit;
+
 
 					entry = dataSeries.getDataPointAtX(x, true);
 					entry.dataSeries = dataSeries;
@@ -12669,8 +13489,38 @@
 					return;
 				}
 
-				if (entry.dataPoint.y !== null)
-					entries.push(entry);
+				if (!isNullOrUndefined(entry.dataPoint.y)) {
+					if (entry.dataSeries.axisY) {
+						if (entry.dataPoint.y.length > 0) {
+							var unboundToViewport = 0;
+							for (var i = 0; i < entry.dataPoint.y.length; i++)
+								if (entry.dataPoint.y[i] < entry.dataSeries.axisY.viewportMinimum)
+									unboundToViewport--;
+								else if (entry.dataPoint.y[i] > entry.dataSeries.axisY.viewportMaximum)
+									unboundToViewport++;
+							if (unboundToViewport < entry.dataPoint.y.length && unboundToViewport > -entry.dataPoint.y.length)
+								entries.push(entry);
+						} else {
+							if (dataSeries.type === "column" || dataSeries.type === "bar") {
+								if (entry.dataPoint.y < 0 /*use entry.dataPoint.y < offset when it will be introduced*/) {
+									if (entry.dataSeries.axisY.viewportMinimum < 0 && entry.dataSeries.axisY.viewportMaximum >= entry.dataPoint.y)
+										entries.push(entry);
+								}
+								else if (entry.dataSeries.axisY.viewportMinimum <= entry.dataPoint.y && entry.dataSeries.axisY.viewportMaximum >= 0) // If entry.dataPoint.y >= 0
+									entries.push(entry);
+							}
+							else if (dataSeries.type === "bubble") {
+								var radius = this.chart._eventManager.objectMap[dataSeries.dataPointIds[entry.index]].size / 2;
+								if (entry.dataPoint.y >= entry.dataSeries.axisY.viewportMinimum - radius && entry.dataPoint.y <= entry.dataSeries.axisY.viewportMaximum + radius)
+									entries.push(entry);
+							}
+							else if (entry.dataSeries.type.indexOf("100") >= 0 || dataSeries.type === "stackedColumn" || dataSeries.type === "stackedBar" || (entry.dataPoint.y >= entry.dataSeries.axisY.viewportMinimum && entry.dataPoint.y <= entry.dataSeries.axisY.viewportMaximum))
+								entries.push(entry);
+						}
+					} else
+						entries.push(entry);
+				}
+
 			}
 		}
 
@@ -12713,12 +13563,14 @@
 						this.contentDiv.style.fontWeight = this.fontWeight ? this.fontWeight : "normal";
 						this.contentDiv.style.fontStyle = this.fontStyle ? this.fontStyle : isCanvasSupported ? "italic" : "normal";
 
-					} catch (e) { }
+					} catch (e) {
+					}
 
 					if (entries[0].dataSeries.type === "pie" || entries[0].dataSeries.type === "doughnut" || entries[0].dataSeries.type === "funnel" || entries[0].dataSeries.type === "bar" || entries[0].dataSeries.type === "rangeBar" || entries[0].dataSeries.type === "stackedBar" || entries[0].dataSeries.type === "stackedBar100") {
 						toolTipLeft = mouseX - 10 - this.container.clientWidth;
 					} else {
-						toolTipLeft = (((this.chart.axisX.lineCoordinates.width / Math.abs(this.chart.axisX.maximum - this.chart.axisX.minimum)) * Math.abs(entries[0].dataPoint.x - this.chart.axisX.minimum)) + this.chart.axisX.lineCoordinates.x1 + .5) - this.container.clientWidth << 0;
+						//toolTipLeft = (((this.chart.axisX.lineCoordinates.width / Math.abs(this.chart.axisX.viewportMaximum - this.chart.axisX.viewportMinimum)) * Math.abs(entries[0].dataPoint.x - this.chart.axisX.viewportMinimum)) + this.chart.axisX.lineCoordinates.x1 + .5) - this.container.clientWidth << 0;
+						toolTipLeft = entries[0].dataSeries.axisX.conversionParameters.reference + entries[0].dataSeries.axisX.conversionParameters.pixelPerUnit * (entries[0].dataPoint.x - entries[0].dataSeries.axisX.conversionParameters.minimum) - this.container.clientWidth << 0;
 						toolTipLeft -= 10;
 					}
 
@@ -12727,15 +13579,17 @@
 						toolTipLeft += this.container.clientWidth + 20;
 					}
 
-					if (toolTipLeft + this.container.clientWidth > this.chart._container.clientWidth)
-						toolTipLeft = Math.max(0, this.chart._container.clientWidth - this.container.clientWidth);
+					if (toolTipLeft + this.container.clientWidth > Math.max(this.chart._container.clientWidth, this.chart.width))
+						toolTipLeft = Math.max(0, Math.max(this.chart._container.clientWidth, this.chart.width) - this.container.clientWidth);
 
 					toolTipLeft += "px";
 
 					if (entries.length === 1 && !this.shared && (entries[0].dataSeries.type === "line" || entries[0].dataSeries.type === "stepLine" || entries[0].dataSeries.type === "spline" || entries[0].dataSeries.type === "area" || entries[0].dataSeries.type === "stepArea" || entries[0].dataSeries.type === "splineArea" || entries[0].dataSeries.type === "stackedArea" || entries[0].dataSeries.type === "stackedArea100")) {
-						toolTipBottom = (entries[0].dataSeries.axisY.lineCoordinates.y2 - entries[0].dataSeries.axisY.lineCoordinates.height / Math.abs(entries[0].dataSeries.axisY.maximum - entries[0].dataSeries.axisY.minimum) * Math.abs(entries[0].dataPoint.y - entries[0].dataSeries.axisY.minimum) + .5) << 0;
+						//toolTipBottom = (entries[0].dataSeries.axisY.lineCoordinates.y2 - entries[0].dataSeries.axisY.lineCoordinates.height / Math.abs(entries[0].dataSeries.axisY.maximum - entries[0].dataSeries.axisY.viewportMinimum) * Math.abs(entries[0].dataPoint.y - entries[0].dataSeries.axisY.viewportMinimum) + .5) << 0;
+						toolTipBottom = entries[0].dataSeries.axisY.conversionParameters.reference + entries[0].dataSeries.axisY.conversionParameters.pixelPerUnit * (entries[0].dataPoint.y - entries[0].dataSeries.axisY.viewportMinimum) + .5 << 0;
 					} else if (entries[0].dataSeries.type === "bar" || entries[0].dataSeries.type === "rangeBar" || entries[0].dataSeries.type === "stackedBar" || entries[0].dataSeries.type === "stackedBar100") {
-						toolTipBottom = (entries[0].dataSeries.axisX.lineCoordinates.y2 - entries[0].dataSeries.axisX.lineCoordinates.height / Math.abs(entries[0].dataSeries.axisX.maximum - entries[0].dataSeries.axisX.minimum) * Math.abs(entries[0].dataPoint.x - entries[0].dataSeries.axisX.minimum) + .5) << 0;
+						//toolTipBottom = (entries[0].dataSeries.axisX.lineCoordinates.y2 - entries[0].dataSeries.axisX.lineCoordinates.height / Math.abs(entries[0].dataSeries.axisX.maximum - entries[0].dataSeries.axisX.viewportMinimum) * Math.abs(entries[0].dataPoint.x - entries[0].dataSeries.axisX.viewportMinimum) + .5) << 0;
+						toolTipBottom = entries[0].dataSeries.axisX.conversionParameters.reference + entries[0].dataSeries.axisX.conversionParameters.pixelPerUnit * (entries[0].dataPoint.x - entries[0].dataSeries.axisX.viewportMinimum) + .5 << 0;
 					}
 					else {
 						toolTipBottom = mouseY;
@@ -12771,7 +13625,6 @@
 
 
 	ToolTip.prototype.highlightObjects = function (entries) {
-
 		//if (!this.enabled)
 		//	return;
 
@@ -12779,11 +13632,15 @@
 		var overlaidCanvasCtx = this.chart.overlaidCanvasCtx;
 		this.chart.resetOverlayedCanvas();
 
+		overlaidCanvasCtx.clearRect(0, 0, this.chart.width, this.chart.height);
 		overlaidCanvasCtx.save();
 
 
 		var plotArea = this.chart.plotArea;
 		var offset = 0;
+
+		overlaidCanvasCtx.rect(plotArea.x1, plotArea.y1, plotArea.x2 - plotArea.x1, plotArea.y2 - plotArea.y1);
+		overlaidCanvasCtx.clip();
 
 
 		for (var i = 0; i < entries.length; i++) {
@@ -12842,7 +13699,7 @@
 					drawRect(overlaidCanvasCtx, eventObject.x1, eventObject.y1, eventObject.x2, eventObject.y2, "white", 0, null, false, false, false, false, .3);
 				}
 				else if (dataSeries.type === "pie" || dataSeries.type === "doughnut") {
-					drawSegment(overlaidCanvasCtx, eventObject.center, eventObject.radius, "white", dataSeries.type, eventObject.startAngle, eventObject.endAngle, .3);
+					drawSegment(overlaidCanvasCtx, eventObject.center, eventObject.radius, "white", dataSeries.type, eventObject.startAngle, eventObject.endAngle, .3, eventObject.percentInnerRadius);
 				} else if (dataSeries.type === "candlestick") {
 
 					overlaidCanvasCtx.globalAlpha = 1;
@@ -12887,13 +13744,15 @@
 					overlaidCanvasCtx.stroke();
 
 					overlaidCanvasCtx.globalAlpha = 1;
+
 				}
 			}
 		}
 
+		overlaidCanvasCtx.restore();
 		overlaidCanvasCtx.globalAlpha = 1;
-
 		overlaidCanvasCtx.beginPath();
+
 		return;
 	}
 
@@ -12916,7 +13775,9 @@
 
 		if (isToolTipDefinedInData && ((this.content && typeof (this.content) === "function") || this.contentFormatter)) {
 
-			var param = { chart: this.chart, toolTip: this._options, entries: entries };
+			var param = {
+				chart: this.chart._publicChartReference, toolTip: this._options, entries: entries
+			};
 			toolTipInnerHtml = this.contentFormatter ? this.contentFormatter(param) : this.content(param);
 
 		} else {
@@ -12946,16 +13807,14 @@
 					if (dataSeries.type === "line" || dataSeries.type === "stepLine" || dataSeries.type === "spline" || dataSeries.type === "area" || dataSeries.type === "stepArea" || dataSeries.type === "splineArea" || dataSeries.type === "column" || dataSeries.type === "bar" || dataSeries.type === "scatter"
 					|| dataSeries.type === "stackedColumn" || dataSeries.type === "stackedColumn100" || dataSeries.type === "stackedBar" || dataSeries.type === "stackedBar100"
 					|| dataSeries.type === "stackedArea" || dataSeries.type === "stackedArea100") {
-						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>{name}:</span>&nbsp;&nbsp;{y}";
+						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>{name}:</span>&nbsp;&nbsp;{y}";
 					}
 					else if (dataSeries.type === "bubble") {
-						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>{name}:</span>&nbsp;&nbsp;{y}, &nbsp;&nbsp;{z}";
-					} else if (dataSeries.type === "pie" || dataSeries.type === "doughnut" || dataSeries.type === "funnel") {
-						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "&nbsp;&nbsp;{y}";
+						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>{name}:</span>&nbsp;&nbsp;{y}, &nbsp;&nbsp;{z}";
 					} else if (dataSeries.type === "rangeColumn" || dataSeries.type === "rangeBar" || dataSeries.type === "rangeArea" || dataSeries.type === "rangeSplineArea") {
-						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>{name}:</span>&nbsp;&nbsp;{y[0]},&nbsp;{y[1]}";
+						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>{name}:</span>&nbsp;&nbsp;{y[0]},&nbsp;{y[1]}";
 					} else if (dataSeries.type === "candlestick" || dataSeries.type === "ohlc") {
-						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>{name}:</span>"
+						toolTipContent += dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>{name}:</span>"
 										+ "<br/>Open: &nbsp;&nbsp;{y[0]}"
 										+ "<br/>High: &nbsp;&nbsp;&nbsp;{y[1]}"
 										+ "<br/>Low:&nbsp;&nbsp;&nbsp;{y[2]}"
@@ -13001,15 +13860,15 @@
 				if (dataSeries.type === "line" || dataSeries.type === "stepLine" || dataSeries.type === "spline" || dataSeries.type === "area" || dataSeries.type === "stepArea" || dataSeries.type === "splineArea" || dataSeries.type === "column" || dataSeries.type === "bar" || dataSeries.type === "scatter"
 					|| dataSeries.type === "stackedColumn" || dataSeries.type === "stackedColumn100" || dataSeries.type === "stackedBar" || dataSeries.type === "stackedBar100"
 					|| dataSeries.type === "stackedArea" || dataSeries.type === "stackedArea100") {
-					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>" + (dataPoint.label ? "{label}" : "{x}") + " :</span>&nbsp;&nbsp;{y}";
+					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>" + (dataPoint.label ? "{label}" : "{x}") + ":</span>&nbsp;&nbsp;{y}";
 				} else if (dataSeries.type === "bubble") {
-					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>" + (dataPoint.label ? "{label}" : "{x}") + ":</span>&nbsp;&nbsp;{y}, &nbsp;&nbsp;{z}";
+					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>" + (dataPoint.label ? "{label}" : "{x}") + ":</span>&nbsp;&nbsp;{y}, &nbsp;&nbsp;{z}";
 				} else if (dataSeries.type === "pie" || dataSeries.type === "doughnut" || dataSeries.type === "funnel") {
-					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : (dataPoint.name ? "{name}:&nbsp;&nbsp;" : dataPoint.label ? "{label}:&nbsp;&nbsp;" : "") + "{y}";
+					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>" + (dataPoint.name ? "{name}:</span>&nbsp;&nbsp;" : dataPoint.label ? "{label}:</span>&nbsp;&nbsp;" : "</span>") + "{y}";
 				} else if (dataSeries.type === "rangeColumn" || dataSeries.type === "rangeBar" || dataSeries.type === "rangeArea" || dataSeries.type === "rangeSplineArea") {
-					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>" + (dataPoint.label ? "{label}" : "{x}") + " :</span>&nbsp;&nbsp;{y[0]}, &nbsp;{y[1]}";
+					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>" + (dataPoint.label ? "{label}" : "{x}") + " :</span>&nbsp;&nbsp;{y[0]}, &nbsp;{y[1]}";
 				} else if (dataSeries.type === "candlestick" || dataSeries.type === "ohlc") {
-					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"'color:{color};'\"'>" + (dataPoint.label ? "{label}" : "{x}") + "</span>"
+					toolTipContent = dataPoint.toolTipContent ? dataPoint.toolTipContent : dataSeries.toolTipContent ? dataSeries.toolTipContent : this.content && typeof (this.content) !== "function" ? this.content : "<span style='\"" + (this.fontColor ? "" : "'color:{color};'") + "\"'>" + (dataPoint.label ? "{label}" : "{x}") + "</span>"
 						+ "<br/>Open: &nbsp;&nbsp;{y[0]}"
 						+ "<br/>High: &nbsp;&nbsp;&nbsp;{y[1]}"
 						+ "<br/>Low: &nbsp;&nbsp;&nbsp;&nbsp;{y[2]}"
@@ -13074,13 +13933,13 @@
 				total = ds.plotUnit.yTotals[dpX];
 
 				if (!isNaN(dp.y)) {
-				    if (total === 0)
-				        percent = 0;
-                    else
-				        percent = (dp.y / total) * 100;
+					if (total === 0)
+						percent = 0;
+					else
+						percent = (dp.y / total) * 100;
 				}
 				else
-				    percent = 0;
+					percent = 0;
 			}
 		} else if (ds.type === "pie" || ds.type === "doughnut") {
 			total = 0;
@@ -13095,8 +13954,10 @@
 			else
 				percent = 0;
 		}
-         
-		return { percent: percent, total: total };
+
+		return {
+			percent: percent, total: total
+		};
 	}
 
 	Chart.prototype.replaceKeywordsWithValue = function (str, dp, ds, dpIndex, indexKeywordValue) {
@@ -13111,10 +13972,10 @@
 			var dpX = null;
 
 			var percentAndTotal = this.getPercentAndTotal(ds, dp);
-			
-			total = percentAndTotal.total ? percentAndTotal.total : total;
+
+			total = isNaN(percentAndTotal.total) ? total : percentAndTotal.total;
 			percent = isNaN(percentAndTotal.percent) ? percent : percentAndTotal.percent;
-			
+
 			do {
 				var percentFormatString = "";
 				if (ds.percentFormatString)
@@ -13152,7 +14013,8 @@
 					index = trimString(match[2]);
 					key = trimString(match[1]);
 				}
-			} catch (e) { };
+			} catch (e) {
+			};
 
 
 			var obj = null;
@@ -13172,8 +14034,8 @@
 				value = value[index];
 
 			if (key === "x") {
-				if (chart.axisX && chart.plotInfo.axisXValueType === "dateTime")
-					return dateFormat(value, dp.xValueFormatString ? dp.xValueFormatString : ds.xValueFormatString ? ds.xValueFormatString : chart.axisX && chart.axisX.valueFormatString ? chart.axisX.valueFormatString : "DD MMM YY", chart._cultureInfo);
+				if (chart.plotInfo.axisXValueType === "dateTime" || ds.xValueType === "dateTime" || (dp.x && dp.x.getTime))
+					return dateFormat(value, dp.xValueFormatString ? dp.xValueFormatString : ds.xValueFormatString ? ds.xValueFormatString : chart.axisX && chart.axisX.autoValueFormatString ? chart.axisX.autoValueFormatString : "DD MMM YY", chart._cultureInfo);
 				else
 					return numberFormat(value, dp.xValueFormatString ? dp.xValueFormatString : ds.xValueFormatString ? ds.xValueFormatString : "#,##0.########", chart._cultureInfo);
 			} else if (key === "y")
@@ -13271,7 +14133,9 @@
 					dataSeries: dataSeries._options, dataPointIndex: dataPointIndex, dataSeriesIndex: dataSeries.index,
 					chart: this.chart._publicChartReference
 				};
-				eventObjectMap.eventContext = { context: dataPoint, userContext: dataPoint, mouseover: "mouseover", mousemove: "mousemove", mouseout: "mouseout", click: "click" };
+				eventObjectMap.eventContext = {
+					context: dataPoint, userContext: dataPoint, mouseover: "mouseover", mousemove: "mousemove", mouseout: "mouseout", click: "click"
+				};
 				eventObjectMaps.push(eventObjectMap);
 
 				//Add Dataseries too because mouse event on dataPoint also means there is an event on dataSeries. DataSeries is not present on ghost canvas
@@ -13284,7 +14148,9 @@
 					chart: this.chart._publicChartReference
 				};
 
-				eventObjectMap.eventContext = { context: dataSeries, userContext: dataSeries._options, mouseover: "mouseover", mousemove: "mousemove", mouseout: "mouseout", click: "click" };
+				eventObjectMap.eventContext = {
+					context: dataSeries, userContext: dataSeries._options, mouseover: "mouseover", mousemove: "mousemove", mouseout: "mouseout", click: "click"
+				};
 				eventObjectMaps.push(this.objectMap[dataSeries.id]);
 			}
 				//else if (eventObjectMap.objectType === "stripLine") {
@@ -13306,7 +14172,9 @@
 					dataSeries: dataSeries._options, dataPoint: dataPoint, dataPointIndex: eventObjectMap.dataPointIndex, dataSeriesIndex: eventObjectMap.dataSeriesIndex,
 					chart: this.chart._publicChartReference
 				};
-				eventObjectMap.eventContext = { context: this.chart.legend, userContext: this.chart.legend._options, mouseover: "itemmouseover", mousemove: "itemmousemove", mouseout: "itemmouseout", click: "itemclick" };
+				eventObjectMap.eventContext = {
+					context: this.chart.legend, userContext: this.chart.legend._options, mouseover: "itemmouseover", mousemove: "itemmousemove", mouseout: "itemmouseout", click: "itemclick"
+				};
 				eventObjectMaps.push(eventObjectMap);
 			}
 		}
@@ -13693,7 +14561,9 @@
 		Chart: function (containerId, options) {
 			var _chart = new Chart(containerId, options, this);
 
-			this.render = function () { _chart.render(this.options) };
+			this.render = function () {
+				_chart.render(this.options)
+			};
 			//console.log(_chart);
 			this.options = _chart._options;
 		},
@@ -13726,7 +14596,7 @@
 
 	}
 
-	CanvasJS.Chart.version = "v1.7.0 GA";
+	CanvasJS.Chart.version = "v1.8.0 GA";
 	window.CanvasJS = CanvasJS;
 	//#endregion Public API
 
