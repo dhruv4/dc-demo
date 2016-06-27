@@ -33,6 +33,89 @@ function enterTest(){ //This opens when the performance demo is started - it clo
 	$('.slider').slider({full_width: true});
 
 }
+function enterStat(){ //This opens when the statistics demo is started - it closes and removes irrelevant stuff and starts the demo.
+
+	$('#splash-page').remove();
+	$('#stat-container').show();
+	$('#test-container').remove();
+	$('#demo-container').remove();
+	$('#nav-mobile').remove();
+	$('#concept-container').remove();
+	$('.thumb').addClass('cyan darken-4');
+	$('#home-icon').show();
+	//$('#perf-intro-modal').openModal();
+	$('.slider').slider({full_width: true});
+	$("#chartContainer").CanvasJSChart({
+		title: {
+			text: "Canopy vs Other Systems",
+			fontSize: 22
+		},
+		axisY: {
+          title: "Time (seconds)"
+		},
+		toolTip: {
+		  content: "{label} <br/> {name}: {y} seconds"
+		},
+		data: [
+		{
+			type: "stackedBar",
+			name: "Sum",
+			showInLegend: true,
+			dataPoints: [
+				{ label: "Canopy",		   y: 157},
+				{ label: "Postgres + NumPy",y: 287},
+				{ label: "MonetDB.R",        y: 190},
+				{ label: "NumPy",  y: 209}
+			]
+		},
+		{
+			type: "stackedBar",
+			name: "Sum of Squares",
+			showInLegend: true,
+			dataPoints: [
+				{ label: "Canopy",		   y: 142},
+				{ label: "Postgres + NumPy",y: 261},
+				{ label: "MonetDB.R",        y: 171},
+				{ label: "NumPy",  y: 190}
+			]
+		},
+		{
+			type: "stackedBar",
+			name: "Mean",
+			showInLegend: true,
+			dataPoints: [
+				{ label: "Canopy",		   y: 160},
+				{ label: "Postgres + NumPy",y: 293},
+				{ label: "MonetDB.R",        y: 190},
+				{ label: "NumPy",  y: 210}
+			]
+		},
+		{
+			type: "stackedBar",
+			name: "Variance",
+			showInLegend: true,
+			dataPoints: [
+				{ label: "Canopy",		   y: 152},
+				{ label: "Postgres + NumPy",y: 285},
+				{ label: "MonetDB.R",        y: 183},
+				{ label: "NumPy",  y: 206}
+			]
+		},
+		{
+			type: "stackedBar",
+			name: "Standard Deviation",
+			showInLegend: true,
+			dataPoints: [
+				{ label: "Canopy", 	       y: 156},
+				{ label: "Postgres + NumPy",y: 294},
+				{ label: "MonetDB.R",	       y: 193},
+				{ label: "NumPy",  y: 213}
+			]
+		}
+		]
+	});
+
+}
 function startClick(){ //This starts when the start button is clicked, setting the timers, starting the processes (by sending data through Sockets), and starting the graph
 	
 	$('#pg-time span').remove();
