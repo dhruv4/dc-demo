@@ -108,6 +108,7 @@ nav, .navbarfixed, .nav-wrapper, header {
 }
 #inter-accordion li div.active {
   background-color: #006064 !important;
+  color: white !important;
 }
 #inter-accordion li div ul {
   box-shadow: none !important;
